@@ -105,4 +105,4 @@ python scripts/run_daily.py deliver --reviewed reviewed_articles.json --report d
 
 ## 开源许可
 
-本项目采用 MIT License。为保持许可证法律文本的准确性，根目录中的 [`LICENSE`](LICENSE) 保留标准英文原文。
+本项目采用 MIT License。为保持许可证法律文本的准确性，根目录中的 [`LICENSE`](LICENSE) 保留标准英文原文；中文用户可阅读 [`LICENSE.zh-CN.md`](LICENSE.zh-CN.md) 参考译文，解释不一致时以英文原文为准。
