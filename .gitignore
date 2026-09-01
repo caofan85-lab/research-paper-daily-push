@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.env
+data/runs/
+*.delivery.json
+reviewed_articles.json
+*.md.tmp

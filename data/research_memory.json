@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "updated_at": "",
+  "scope_note": "报告入选仅表示论文已经过证据复核并被认为值得阅读，不等于用户明确表示喜欢；明确的用户反馈应单独记录，并优先于自动归纳信号。",
+  "learned_reports": [],
+  "papers": [],
+  "research_ideas": [],
+  "explicit_preferences": {
+    "liked_topics": [],
+    "disliked_topics": [],
+    "notes": []
+  },
+  "signals": {
+    "tag_counts": {},
+    "key_term_counts": {},
+    "roadmap_stage_counts": {},
+    "strong_recommendation_count": 0,
+    "unresolved_validation_count": 0
+  }
+}

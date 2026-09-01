@@ -1,0 +1,4 @@
+interface:
+  display_name: "Research Paper Daily Push"
+  short_description: "Daily evidence-reviewed research paper radar"
+  default_prompt: "Run my daily research paper radar using my configured topics."

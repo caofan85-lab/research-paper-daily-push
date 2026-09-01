@@ -1,0 +1,23 @@
+{
+  "configured": false,
+  "profile_name": "",
+  "report_language": "zh-CN",
+  "research_context": "",
+  "target_system": "",
+  "priority_questions": [],
+  "queries": [],
+  "modes": {},
+  "topic_groups": [],
+  "cross_topic_bonuses": [],
+  "method_groups": [],
+  "quality_tiers": {
+    "tier_1": [],
+    "tier_2": [],
+    "tier_3": []
+  },
+  "exclusion_terms": [],
+  "mechanistic_terms": [],
+  "strong_recommendation_rules": [],
+  "roadmap_stages": [],
+  "tags": []
+}
