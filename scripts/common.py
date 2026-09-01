@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Shared, dependency-free helpers for the research paper radar."""
+"""科研文献雷达共用的零依赖辅助函数。"""
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import html
 import json
@@ -10,6 +11,7 @@ import os
 import re
 import tempfile
 import time
+import sys
 from collections.abc import Iterable
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -18,6 +20,40 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 USER_AGENT = "research-paper-daily-push/1.0 (literature metadata client)"
+
+
+class ChineseArgumentParser(argparse.ArgumentParser):
+    """使用中文标题、帮助说明和错误前缀的命令行参数解析器。"""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs["add_help"] = False
+        super().__init__(*args, **kwargs)
+        self._positionals.title = "位置参数"
+        self._optionals.title = "选项"
+        self.add_argument(
+            "-h",
+            "--help",
+            action="help",
+            default=argparse.SUPPRESS,
+            help="显示此帮助信息并退出",
+        )
+
+    def format_usage(self) -> str:
+        return super().format_usage().replace("usage:", "用法：", 1)
+
+    def format_help(self) -> str:
+        return super().format_help().replace("usage:", "用法：", 1)
+
+    def error(self, message: str) -> None:
+        translations = {
+            "the following arguments are required:": "缺少必填参数：",
+            "unrecognized arguments:": "无法识别的参数：",
+            "expected one argument": "需要一个参数值",
+        }
+        for source, target in translations.items():
+            message = message.replace(source, target)
+        self.print_usage(sys.stderr)
+        self.exit(2, f"{self.prog}：错误：{message}\n")
 
 
 def utc_now_iso() -> str:
@@ -93,7 +129,7 @@ def first_nonempty(*values: Any) -> Any:
 
 
 def parse_date(value: Any) -> str:
-    """Return YYYY-MM-DD when possible, otherwise an empty string."""
+    """尽可能返回 YYYY-MM-DD，无法解析时返回空字符串。"""
     if not value:
         return ""
     if isinstance(value, date):
@@ -164,7 +200,7 @@ def json_request(
             time.sleep(2**attempt)
     if last_error:
         raise last_error
-    raise RuntimeError("HTTP request failed without an exception")
+    raise RuntimeError("HTTP 请求失败，但没有捕获到具体异常")
 
 
 def form_request(
@@ -196,7 +232,7 @@ def form_request(
             time.sleep(2**attempt)
     if last_error:
         raise last_error
-    raise RuntimeError("Form request failed without an exception")
+    raise RuntimeError("表单请求失败，但没有捕获到具体异常")
 
 
 def extract_papers(payload: Any) -> list[dict[str, Any]]:

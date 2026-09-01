@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect and normalize recent papers from stable public scholarly APIs."""
+"""从稳定的公开学术接口检索近期论文并规范化元数据。"""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 from common import (
+    ChineseArgumentParser,
     atomic_write_json,
     clean_text,
     date_from_parts,
@@ -31,7 +32,7 @@ API_SOURCES = ("europepmc", "crossref", "semanticscholar", "biorxiv")
 
 
 def compact_query(query: str) -> str:
-    """Convert Boolean syntax to a plain query for APIs without Boolean support."""
+    """为不支持布尔语法的接口生成普通查询文本。"""
     text = re.sub(r"\b(?:AND|OR|NOT)\b", " ", query, flags=re.IGNORECASE)
     text = text.replace("(", " ").replace(")", " ").replace('"', "")
     return re.sub(r"\s+", " ", text).strip()
@@ -264,8 +265,7 @@ def collect(
             found = SOURCE_FUNCTIONS[source](queries, start, end)
             counts[source] = len(found)
             papers.extend(found)
-        # Provider libraries can surface heterogeneous parsing and transport failures.
-        # Isolate each source so one outage cannot erase otherwise valid results.
+        # 各来源可能出现不同的解析或传输异常；逐个隔离，避免单一来源故障清空其他有效结果。
         except Exception as exc:  # noqa: BLE001
             counts[source] = 0
             errors.append({"source": source, "error": f"{type(exc).__name__}: {exc}"})
@@ -291,15 +291,15 @@ def collect(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ChineseArgumentParser(description=__doc__)
     parser.add_argument("--days", type=int, default=1, choices=range(1, 31), metavar="1-30")
-    parser.add_argument("--from-date", help="YYYY-MM-DD; overrides --days")
-    parser.add_argument("--to-date", help="YYYY-MM-DD; defaults to today in local time")
-    parser.add_argument("--mode", default="all", help="Mode name from the configured profile")
-    parser.add_argument("--query", action="append", help="Custom query; may be repeated")
+    parser.add_argument("--from-date", help="起始日期 YYYY-MM-DD；设置后覆盖 --days")
+    parser.add_argument("--to-date", help="结束日期 YYYY-MM-DD；默认为本地日期的今天")
+    parser.add_argument("--mode", default="all", help="研究配置中定义的模式名称")
+    parser.add_argument("--query", action="append", help="自定义查询语句；可以重复传入")
     parser.add_argument("--profile", default=str(DEFAULT_PROFILE))
-    parser.add_argument("--sources", default=",".join(API_SOURCES), help="Comma-separated source ids")
-    parser.add_argument("--output", required=True, help="Output JSON path")
+    parser.add_argument("--sources", default=",".join(API_SOURCES), help="以英文逗号分隔的来源标识")
+    parser.add_argument("--output", required=True, help="输出 JSON 路径")
     return parser.parse_args(argv)
 
 
@@ -312,15 +312,15 @@ def main(argv: list[str] | None = None) -> int:
     except ProfileError as exc:
         raise SystemExit(str(exc)) from exc
     if not queries:
-        raise SystemExit(f"No queries configured for mode '{args.mode}'")
+        raise SystemExit(f"模式“{args.mode}”没有配置查询语句")
     end = date.fromisoformat(args.to_date) if args.to_date else datetime.now().astimezone().date()
     start = date.fromisoformat(args.from_date) if args.from_date else end - timedelta(days=args.days - 1)
     if start > end:
-        raise SystemExit("--from-date must not be after --to-date")
+        raise SystemExit("--from-date 不能晚于 --to-date")
     sources = [value.strip().casefold() for value in args.sources.split(",") if value.strip()]
     unknown = [source for source in sources if source not in SOURCE_FUNCTIONS]
     if unknown:
-        raise SystemExit(f"Unknown sources: {', '.join(unknown)}")
+        raise SystemExit(f"未知的文献来源：{', '.join(unknown)}")
     result = collect(
         queries=queries,
         start=start,
@@ -332,11 +332,11 @@ def main(argv: list[str] | None = None) -> int:
     result["profile_name"] = clean_text(profile.get("profile_name"))
     atomic_write_json(args.output, result)
     print(
-        f"Retrieved {result['retrieved_count']} records; retained "
-        f"{result['unique_relevant_count']} unique, plausibly relevant papers."
+        f"共检索 {result['retrieved_count']} 条记录；去重并进行相关性预筛后保留 "
+        f"{result['unique_relevant_count']} 篇论文。"
     )
     if result["errors"]:
-        print(f"Warning: {len(result['errors'])} source(s) failed; see output JSON.", file=sys.stderr)
+        print(f"警告：{len(result['errors'])} 个来源检索失败；详情见输出 JSON。", file=sys.stderr)
     return 0
 
 

@@ -1,7 +1,9 @@
-# Persistent research memory
+# 持久化研究记忆
 
-`data/research_memory.json` stores compact evidence from reports that were actually delivered or presented. It supports continuity across daily runs; it is not model-weight training.
+`data/research_memory.json` 保存已经真实推送或展示过的报告中的精简证据，用于保持每日运行之间的连续性；它不是模型权重训练。
 
-Update memory only after WeChat delivery succeeds, a local report is actually presented and committed, or confirmed reports are intentionally backfilled. Never learn from preliminary candidates, failed pushes, or unfinished drafts.
+只有在微信推送成功、本地报告已经真实展示并确认，或有意补录已确认报告时，才能更新研究记忆。不能从初筛候选、推送失败记录或未完成草稿中学习。
 
-The next run uses a bounded memory context to detect accumulating evidence, repeated ideas, underrepresented roadmap stages, and unresolved validation questions. It must not relax the score threshold, repeat a pushed DOI, or treat report frequency as explicit user preference. Direct feedback belongs in `explicit_preferences` and takes priority over inferred signals.
+下一次运行会读取限定长度的研究记忆，用于识别持续积累的证据、重复研究思路、覆盖不足的研究路线阶段和未解决的验证问题。研究记忆不能降低推荐阈值、重复推送已有 DOI，也不能把报告中某个主题出现频率较高解释成用户明确偏好。
+
+用户直接表达的偏好应写入 `explicit_preferences`，并且其优先级高于自动归纳信号。

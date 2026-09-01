@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Orchestrate collection and delivery for the daily literature radar."""
+"""编排每日科研文献雷达的检索与交付流程。"""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from common import atomic_write_json, load_json, utc_now_iso
+from common import ChineseArgumentParser, atomic_write_json, load_json, utc_now_iso
 from profile_config import DEFAULT_PROFILE, ProfileError, load_profile
 from update_research_memory import build_context, load_memory
 
@@ -60,8 +60,8 @@ def collect_stage(args: argparse.Namespace) -> Path:
         )
         return load_json(raw_path, {}), load_json(fresh_path, {}), load_json(ranked_path, {})
 
-    # Most scholarly APIs expose publication dates at day rather than timestamp precision.
-    # Today + yesterday is used as the discovery pool; Codex prioritizes items plausibly within 24h.
+    # 多数学术接口只提供日级出版日期，而不是精确时间戳。
+    # 因此以今天和昨天构成候选池，再由 Codex 优先复核可能位于近24小时内的论文。
     raw, fresh, ranked = execute_window("24h", 2)
     used_window = "近24小时优先（按来源可用的日级日期，候选池覆盖今天和昨天）"
     if int(ranked.get("recommended_count") or 0) < args.min_results:
@@ -100,8 +100,8 @@ def collect_stage(args: argparse.Namespace) -> Path:
     }
     queue_path = output_dir / "review_queue.json"
     atomic_write_json(queue_path, queue)
-    print(f"Review queue ready: {queue_path}")
-    print(f"Window: {used_window}; candidates: {len(queue['candidates'])}")
+    print(f"复核队列已生成：{queue_path}")
+    print(f"检索窗口：{used_window}；候选论文：{len(queue['candidates'])} 篇")
     return queue_path
 
 
@@ -147,21 +147,21 @@ def deliver_stage(args: argparse.Namespace) -> Path:
             )
         except subprocess.CalledProcessError as exc:
             print(
-                f"WARNING: report delivery/history commit succeeded, but research memory update failed: {exc}",
+                f"警告：报告交付和历史提交已成功，但研究记忆更新失败：{exc}",
                 file=sys.stderr,
             )
     else:
-        print("History was not committed because no successful delivery was confirmed.")
-    print(f"Report ready: {report_path}")
+        print("未确认成功交付，因此没有写入推送历史。")
+    print(f"报告已生成：{report_path}")
     return report_path
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ChineseArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    collect_parser = subparsers.add_parser("collect", help="Search, deduplicate, rank, and create a review queue")
-    collect_parser.add_argument("--mode", default="all", help="Mode name from the configured profile")
+    collect_parser = subparsers.add_parser("collect", help="检索、去重、评分并生成复核队列")
+    collect_parser.add_argument("--mode", default="all", help="研究配置中定义的模式名称")
     collect_parser.add_argument("--profile", default=str(DEFAULT_PROFILE))
     collect_parser.add_argument("--sources", default="europepmc,crossref,semanticscholar,biorxiv")
     collect_parser.add_argument("--history", default=str(DEFAULT_HISTORY))
@@ -171,7 +171,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     collect_parser.add_argument("--min-results", type=int, default=5)
     collect_parser.add_argument("--max-results", type=int, default=10)
 
-    deliver_parser = subparsers.add_parser("deliver", help="Render a reviewed JSON report and optionally push it")
+    deliver_parser = subparsers.add_parser("deliver", help="生成已复核 JSON 报告，并可选择推送")
     deliver_parser.add_argument("--reviewed", required=True)
     deliver_parser.add_argument("--report", required=True)
     deliver_parser.add_argument("--history", default=str(DEFAULT_HISTORY))
@@ -191,9 +191,9 @@ def main(argv: list[str] | None = None) -> int:
         except ProfileError as exc:
             raise SystemExit(str(exc)) from exc
         if not 0 <= args.threshold <= 100:
-            raise SystemExit("--threshold must be between 0 and 100")
+            raise SystemExit("--threshold 必须在0到100之间")
         if not 1 <= args.min_results <= args.max_results <= 50:
-            raise SystemExit("Require 1 <= --min-results <= --max-results <= 50")
+            raise SystemExit("参数必须满足 1 <= --min-results <= --max-results <= 50")
         collect_stage(args)
     else:
         deliver_stage(args)

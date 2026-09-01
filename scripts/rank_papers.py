@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply profile-driven, transparent preliminary scoring to normalized papers."""
+"""按照研究配置对规范化论文执行透明的初步评分。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import argparse
 import re
 from typing import Any
 
-from common import atomic_write_json, clean_text, extract_papers, load_json, normalize_doi, utc_now_iso
+from common import ChineseArgumentParser, atomic_write_json, clean_text, extract_papers, load_json, normalize_doi, utc_now_iso
 from profile_config import DEFAULT_PROFILE, ProfileError, load_profile, named_term_groups, topic_groups
 
 WEIGHTS = {
@@ -291,7 +291,7 @@ def rank_payload(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ChineseArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--profile", default=str(DEFAULT_PROFILE))
@@ -303,9 +303,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if not 0 <= args.threshold <= 100:
-        raise SystemExit("--threshold must be between 0 and 100")
+        raise SystemExit("--threshold 必须在0到100之间")
     if not 1 <= args.max_results <= 50:
-        raise SystemExit("--max-results must be between 1 and 50")
+        raise SystemExit("--max-results 必须在1到50之间")
     try:
         profile = load_profile(args.profile)
     except ProfileError as exc:
@@ -318,8 +318,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     atomic_write_json(args.output, result)
     print(
-        f"Screened {result['screened_count']} papers; "
-        f"{result['recommended_count']} met the preliminary threshold."
+        f"共初筛 {result['screened_count']} 篇论文；"
+        f"其中 {result['recommended_count']} 篇达到初步阈值。"
     )
     return 0
 

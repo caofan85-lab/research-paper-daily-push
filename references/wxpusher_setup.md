@@ -68,7 +68,7 @@ python scripts/push_wechat.py --provider wxpusher --check-config
 预期结果类似：
 
 ```text
-Configuration valid: provider=wxpusher; recipients=1. No credentials printed.
+配置有效：通知渠道=wxpusher；接收者数量=1。未输出任何凭据。
 ```
 
 然后明确执行真实测试推送：
@@ -80,7 +80,7 @@ python scripts/push_wechat.py --provider wxpusher --test-message
 成功时终端显示：
 
 ```text
-Delivery completed via wxpusher; 1 chunk(s).
+wxpusher 发送完成；共 1 个消息分段。
 ```
 
 WxPusher 返回业务码 `1000` 表示发送任务创建成功；消息仍由平台异步分发，因此还应在微信或 ClawBot 中确认实际收到消息。
@@ -117,7 +117,7 @@ python scripts/run_daily.py deliver --reviewed reviewed_articles.json --report d
 - 去除首尾空格、引号和换行。
 - 如果重新生成过 Token，旧 Token 会失效，需要同步更新环境变量并重启运行环境。
 
-### App 中收到，但微信 ClawBot 没收到
+### WxPusher客户端中收到，但微信 ClawBot 没收到
 
 - 确认微信端 ClawBot 已完成连接和激活，而不只是关注应用。
 - 在“用户管理”核对 UID 对应的确实是目标微信用户。

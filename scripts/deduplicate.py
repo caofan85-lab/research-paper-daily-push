@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Filter or commit article history using DOI-first, title-fallback identity."""
+"""按 DOI 优先、题名兜底的身份规则筛选或提交论文历史。"""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from common import (
+    ChineseArgumentParser,
     atomic_write_json,
     clean_text,
     extract_papers,
@@ -28,7 +29,7 @@ def load_history(path: str | Path) -> list[dict[str, Any]]:
     if isinstance(payload, dict):
         payload = payload.get("articles", [])
     if not isinstance(payload, list):
-        raise TypeError("History must be a JSON array or an object containing an articles array")
+        raise TypeError("历史文件必须是 JSON 数组，或包含 articles 数组的对象")
     return [item for item in payload if isinstance(item, dict)]
 
 
@@ -139,19 +140,19 @@ def commit_history(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ChineseArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    filter_parser = subparsers.add_parser("filter", help="Separate new, updated, and duplicate papers")
+    filter_parser = subparsers.add_parser("filter", help="区分新论文、更新论文和重复论文")
     filter_parser.add_argument("--input", required=True)
     filter_parser.add_argument("--output", required=True)
     filter_parser.add_argument("--history", default=str(DEFAULT_HISTORY))
 
-    commit_parser = subparsers.add_parser("commit", help="Atomically append successfully delivered papers")
+    commit_parser = subparsers.add_parser("commit", help="以原子方式追加已成功交付的论文")
     commit_parser.add_argument("--input", required=True)
     commit_parser.add_argument("--history", default=str(DEFAULT_HISTORY))
     commit_parser.add_argument("--delivery", choices=("wxpusher", "serverchan", "wecom", "local-report"), required=True)
-    commit_parser.add_argument("--pushed-date", help="YYYY-MM-DD; defaults to local date")
+    commit_parser.add_argument("--pushed-date", help="推送日期 YYYY-MM-DD；默认为本地日期")
     return parser.parse_args(argv)
 
 
@@ -163,8 +164,8 @@ def main(argv: list[str] | None = None) -> int:
         result = filter_history(papers, history)
         atomic_write_json(args.output, result)
         print(
-            f"History filter: {result['new_count']} new, {result['update_count']} updates, "
-            f"{result['duplicate_count']} duplicates."
+            f"历史筛选完成：新论文 {result['new_count']} 篇，更新 {result['update_count']} 篇，"
+            f"重复 {result['duplicate_count']} 篇。"
         )
         return 0
 
@@ -173,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
         papers, history, delivery=args.delivery, pushed_date=pushed_date
     )
     atomic_write_json(args.history, updated)
-    print(f"Committed {committed} article(s) to history via {args.delivery}.")
+    print(f"已通过 {args.delivery} 将 {committed} 篇论文写入推送历史。")
     return 0
 
 

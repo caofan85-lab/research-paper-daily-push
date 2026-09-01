@@ -1,61 +1,61 @@
 ---
 name: research-paper-daily-push
-description: Search, evidence-review, score, deduplicate, summarize, remember, and optionally push a small daily or weekly set of recent research papers for a user-configured topic. Use for selective literature-radar requests; do not use for exhaustive systematic reviews or citation-only formatting.
+description: 根据用户配置的研究方向，检索、复核、评分、去重并中文总结近期科研论文，同时维护研究记忆并可选推送到微信。适用于每日或每周精选文献雷达；不适用于穷尽式系统综述或仅做参考文献格式整理的任务。
 ---
 
-# Research Paper Daily Push
+# 每日科研文献雷达
 
-Produce a selective Chinese literature radar, not a keyword dump. Recommend at most 5–10 evidence-supported papers scoring at least 70/100; return fewer or zero when evidence is weak. Explain every specialized term used in each paper twice: one precise academic definition and one faithful analogy or plain-language explanation.
+生成高选择性的中文文献雷达，不能把关键词检索结果直接堆给用户。每天最多推荐5–10篇证据充分且推荐指数不低于70分的论文；证据不足时允许少于5篇或零推荐。每篇论文中实际使用的专业术语都要给出两种解释：一条严谨的学术定义和一条忠实、易懂的比喻或大白话解释。
 
-## Configuration boundary
+## 配置边界
 
-Read [references/research_topics.md](references/research_topics.md) before evidence review and use `config/research_profile.json` for deterministic search and preliminary scoring. The public profile is intentionally blank. If `configured` is `false`, stop and help the user define the research topic; never invent a topic or silently use a bundled example. Read [references/profile_schema.md](references/profile_schema.md) when creating or changing a profile.
+证据复核前先阅读 [`references/research_topics.md`](references/research_topics.md)，并使用 `config/research_profile.json` 进行确定性检索和初步评分。公开配置有意留空；如果 `configured` 为 `false`，停止检索并帮助用户配置研究方向，不能臆造主题，也不能悄悄套用内置示例。创建或修改配置时阅读 [`references/profile_schema.md`](references/profile_schema.md)。
 
-The narrative topic file controls scientific interpretation. The JSON profile controls API queries, keyword groups, focused modes, preliminary weights, quality tiers, exclusions, strong-recommendation conditions, roadmap classification, and tag vocabulary. Keep them consistent.
+自然语言主题文件负责科学解释，JSON配置负责 API 查询、主题词组、聚焦模式、初筛权重、期刊分层、排除条件、强烈推荐条件、研究路线分类和标签词表。两者必须保持一致。
 
-## Workflow
+## 工作流程
 
-1. Run `python scripts/run_daily.py collect --mode <mode>`. `all` uses the default profile queries; focused mode names come from the profile. The command queries Europe PMC, Crossref, Semantic Scholar, and bioRxiv; merges duplicates; filters confirmed delivery history; and writes `data/runs/YYYY-MM-DD/review_queue.json`.
-2. Start with a near-24-hour discovery pool. If fewer than five preliminary candidates reach 70, expand automatically to seven days. Scholarly APIs often provide only day-level dates, so treat “24 hours” as a prioritized approximation and disclose the window.
-3. Read the bounded `research_memory_context`, candidate titles, abstracts, metadata, score evidence, and verification warnings. Use memory to detect accumulating evidence, unresolved questions, gaps, and repeated ideas—not as proof of user preference.
-4. For likely finalists, verify the DOI and publisher or repository page when the abstract is absent, truncated, contradictory, or insufficient for a substantive claim. Never infer results from a title alone.
-5. Re-score each finalist after evidence review. The index is `relevance*0.40 + novelty*0.20 + quality*0.15 + methodology*0.15 + inspiration*0.10`, with every component on 0–100. Set `score_status` to `evidence_reviewed` only after checking available evidence. The deterministic score is a routing aid, not ground truth.
-6. Exclude weakly related papers, duplicates, retractions/corrections/editorials, questionable venues, studies matching configured exclusions, and papers whose key claims cannot be verified. Label preprints as unreviewed evidence. An unfamiliar journal is “needs verification”, not automatically low quality.
-7. Select only evidence-supported papers scoring at least 70, sorted high to low, without quota filling. Write `reviewed_articles.json` using the contract below, set root `term_explanation_mode` to `dual`, then render with `python scripts/summarize_papers.py --input <reviewed.json> --output <report.md>`.
-8. Push only when the user or scheduled-task prompt authorizes the external side effect: `python scripts/run_daily.py deliver --reviewed <reviewed.json> --report <report.md> --provider auto`. For a report that was actually presented locally, use `--skip-push --record-local-report`. The deliver stage commits deduplication history and research memory only after confirmed delivery or presentation.
+1. 运行 `python scripts/run_daily.py collect --mode <mode>`。`all` 使用默认查询，聚焦模式名称来自研究配置。命令会查询 Europe PMC、Crossref、Semantic Scholar 和 bioRxiv，合并重复记录，排除确认推送过的论文，并写入 `data/runs/YYYY-MM-DD/review_queue.json`。
+2. 先建立近24小时优先的候选池。如果达到70分的初筛候选少于5篇，自动扩展到最近7天。学术接口经常只提供日级日期，因此要把“24小时”视为优先近似窗口，并在报告中说明实际范围。
+3. 阅读限定长度的 `research_memory_context`、候选题名、摘要、元数据、评分证据和待核实提示。研究记忆只用于发现连续证据、未解决问题、研究空白和重复思路，不能当成用户明确偏好的证明。
+4. 对可能入选的论文进行证据核验。如果摘要缺失、截断、相互矛盾或不足以支持实质性结论，应核对 DOI、出版商页面或可信论文库页面。不能只根据题名推断结果。
+5. 证据复核后重新评价每篇候选。推荐指数为 `relevance*0.40 + novelty*0.20 + quality*0.15 + methodology*0.15 + inspiration*0.10`，每个分项均为0–100分。只有检查过可用证据后，才能把 `score_status` 设为 `evidence_reviewed`。程序初筛分只用于排序，不代表最终结论。
+6. 排除弱相关论文、重复论文、撤稿/勘误/社论、明显可疑来源、命中配置排除条件的研究，以及关键主张无法核实的论文。预印本要明确标注为未经过正式同行评议。陌生期刊应标记“需要核实”，不能直接判定为低质量。
+7. 只保留证据充分且评分不低于70分的论文，按推荐指数降序排列，不为凑数降低标准。按照下方数据约定编写 `reviewed_articles.json`，把根字段 `term_explanation_mode` 设为 `dual`，然后运行 `python scripts/summarize_papers.py --input <reviewed.json> --output <report.md>`。
+8. 只有用户或定时任务提示词明确授权外部推送时，才能运行 `python scripts/run_daily.py deliver --reviewed <reviewed.json> --report <report.md> --provider auto`。报告已经在本地真实展示时，可使用 `--skip-push --record-local-report`。只有确认推送或展示成功后，交付阶段才更新去重历史和研究记忆。
 
-## Evidence and writing rules
+## 证据与写作规则
 
-Distinguish direct evidence, correlation, hypothesis, and speculation. Use cautious scientific Chinese. Do not fabricate titles, entities, methods, samples, numerical results, DOIs, mechanisms, or datasets. Write “需要核实” when a detail is not supported.
+明确区分直接实验依据、相关性、假设和推测。使用审慎的正式科学中文。不得捏造题名、研究对象、方法、样本、数值、DOI、机制或数据集；证据不支持的细节写明“需要核实”。
 
-For each paper, provide a faithful Chinese title plus the original title, journal/date/DOI/URL/type, overall and component scores, one reason under 100 Chinese characters, 3–5 evidence-bound findings, and tailored implications for experimental design, methods, key entities or mechanisms, the configured target system, future projects or grants, paper potential, and limitations/validation. Explain which configured roadmap stage it informs when stages exist. Italicize Latin species and gene names when appropriate. Add 1–8 focused tags.
+每篇论文提供：忠实中文题名和英文原题、期刊/日期/DOI/链接/文章类型、总分和分项评分、100个汉字以内的推荐理由、3–5条受证据约束的核心发现，以及针对实验设计、方法、关键对象或机制、目标研究体系、未来课题或基金、高水平论文潜力和局限/验证需求的具体启发。存在研究路线阶段时，说明论文对应的阶段。拉丁学名和适用的基因名称使用斜体。添加1–8个聚焦标签。
 
-Use `strong_recommendation: true` only when evidence is sufficient and the paper satisfies a configured strong-recommendation rule after human review. A keyword match alone is never enough.
+只有证据充分，并且人工复核后满足配置的强烈推荐规则，才能设置 `strong_recommendation: true`。单纯关键词命中不能触发强烈推荐。
 
-At report level, include retrieved/screened/final counts, TOP 3 reasons, and 1–3 testable research ideas synthesized from that day's evidence.
+报告层面应包含检索/筛选/最终推荐数量、最值得阅读前三名及理由，并结合当天证据提出1–3个可检验的研究思路。
 
-## Dual term explanations
+## 专业术语双重解释
 
-Cover every specialized term actually introduced in the Chinese title, findings, implications, or strong-recommendation reasoning. Include relevant methods, domain concepts, mechanisms, structures, statistics, computational methods, and named pathways or frameworks. Deduplicate exact terms and obvious aliases within the paper.
+覆盖中文题名、核心发现、研究启发或强烈推荐理由中实际引入的所有专业术语，包括相关方法、领域概念、机制、结构、统计学术语、计算方法和命名通路/框架。同一篇论文中的相同术语和明显别名只解释一次。
 
-- `academic_explanation`: a technically correct definition explaining what the term is and, when useful, what it measures or supports; at most 180 Chinese characters.
-- `plain_explanation`: a concrete analogy or plain-language explanation that preserves scientific boundaries; at most 180 Chinese characters.
+- `academic_explanation`：技术上准确的定义，说明术语是什么，并在必要时说明其测量或支持的内容；不超过180个汉字。
+- `plain_explanation`：具体的比喻或大白话解释，同时保持科学边界；不超过180个汉字。
 
-Definitions do not constitute evidence for the paper. Do not turn association into causation or present an analogy as the literal mechanism.
+术语定义不是论文证据。不能把相关性写成因果，也不能把比喻当作真实机制。
 
-## Reviewed JSON contract
+## 已复核JSON数据约定
 
-The root contains `date`, `term_explanation_mode`, `metadata`, `articles`, and `research_ideas`. Each article includes:
+根对象包含 `date`、`term_explanation_mode`、`metadata`、`articles` 和 `research_ideas`。每篇论文使用以下结构：
 
 ```json
 {
-  "title": "Original title",
+  "title": "英文原题",
   "chinese_title": "忠实中文题名",
-  "journal": "Journal",
+  "journal": "期刊名称",
   "publication_date": "YYYY-MM-DD",
   "doi": "10.xxxx/xxxx",
   "url": "https://...",
-  "article_type": "research article",
+  "article_type": "研究论文",
   "recommendation_score": 86,
   "score_status": "evidence_reviewed",
   "component_scores": {
@@ -66,7 +66,7 @@ The root contains `date`, `term_explanation_mode`, `metadata`, `articles`, and `
     "inspiration": 90
   },
   "why_worth_reading": "100字以内",
-  "core_findings": ["3–5条证据限定的结论"],
+  "core_findings": ["3–5条受证据约束的结论"],
   "term_explanations": [
     {
       "term": "专业术语",
@@ -91,22 +91,22 @@ The root contains `date`, `term_explanation_mode`, `metadata`, `articles`, and `
 }
 ```
 
-## Deduplication and memory
+## 去重与研究记忆
 
-`data/pushed_articles.json` is the delivery history. Identity is DOI-first with normalized-title fallback. Never push an existing DOI as new. Treat a preprint-to-formal-publication change as an update rather than a new paper. Writes are atomic.
+`data/pushed_articles.json` 是交付历史。论文身份优先使用 DOI，没有 DOI 时使用规范化题名。已经推送的 DOI 不能再次作为新论文推送。预印本转为正式出版时标记为“更新”，不能当成全新论文。所有写入操作必须保持原子性。
 
-`data/research_memory.json` records only confirmed reports: compact lessons, tags, explained terms, roadmap links, strong recommendations, unresolved validation items, and research ideas. Read [references/research_memory.md](references/research_memory.md) when changing memory behavior. This is local workflow memory, not model training.
+`data/research_memory.json` 只记录已经确认交付的报告，包括精简结论、标签、已解释术语、研究路线关联、强烈推荐、未解决验证事项和研究思路。修改记忆行为时阅读 [`references/research_memory.md`](references/research_memory.md)。这是本地工作流记忆，不是模型训练。
 
-## Notification and errors
+## 通知与错误处理
 
-Provider order is WxPusher, ServerChan, then WeCom. Credentials must remain in environment variables and never appear in reports or logs:
+通知渠道优先级为 WxPusher、Server酱、企业微信。凭据只能存放在环境变量中，不得出现在报告或日志里：
 
-- WxPusher: `WXPUSHER_APP_TOKEN`, `WXPUSHER_UID`; optional `WXPUSHER_CONTENT_URL`.
-- ServerChan: `SERVERCHAN_SENDKEY`.
-- WeCom: `WECOM_WEBHOOK_URL` or `WECHAT_WORK_WEBHOOK_URL`.
+- WxPusher：`WXPUSHER_APP_TOKEN`、`WXPUSHER_UID`；可选 `WXPUSHER_CONTENT_URL`。
+- Server酱：`SERVERCHAN_SENDKEY`。
+- 企业微信：`WECOM_WEBHOOK_URL` 或 `WECHAT_WORK_WEBHOOK_URL`。
 
-When configuring, testing, or troubleshooting WxPusher, read [references/wxpusher_setup.md](references/wxpusher_setup.md). Validate settings locally with `python scripts/push_wechat.py --provider wxpusher --check-config`. Send a real connectivity test only when explicitly authorized, using `--test-message`.
+配置、测试或排查 WxPusher 时阅读 [`references/wxpusher_setup.md`](references/wxpusher_setup.md)。使用 `python scripts/push_wechat.py --provider wxpusher --check-config` 在本地检查配置；只有得到明确授权后，才可使用 `--test-message` 发送真实测试消息。
 
-If no provider is configured, still generate the report and state exactly: “微信推送尚未配置。” If one source fails, continue and disclose it. If every source fails, stop. If no paper survives review, generate a zero-result report instead of lowering the threshold. Do not retry indefinitely.
+没有配置通知渠道时仍要正常生成报告，并准确提示：“微信推送尚未配置。”某一个文献来源失败时继续处理其他来源，并说明失败情况；所有来源都失败时停止。没有论文通过复核时生成零推荐报告，不能降低阈值。不得无限重试。
 
-Recurring schedules are intentionally not bundled. Create or change a schedule only when the user explicitly asks, and include explicit delivery authorization in the scheduled prompt.
+仓库不预设周期任务。只有用户明确要求时才创建或修改定时任务，并在定时提示词中写明自动交付授权。

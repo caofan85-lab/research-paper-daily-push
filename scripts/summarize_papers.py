@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Codex-reviewed paper summaries and render the Chinese daily report."""
+"""验证 Codex 复核后的论文摘要数据，并生成中文每日报告。"""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from common import clean_text, load_json, normalize_doi
+from common import ChineseArgumentParser, clean_text, load_json, normalize_doi
 
 REQUIRED_INSPIRATION = (
     "experimental_design",
@@ -42,26 +42,26 @@ def validate_article(
     prefix = f"article[{index}]"
     for field in ("title", "chinese_title", "journal", "publication_date", "url", "article_type"):
         if not clean_text(article.get(field)):
-            errors.append(f"{prefix}.{field} is required")
+            errors.append(f"{prefix}.{field} 为必填字段")
     score = article.get("recommendation_score")
     if not isinstance(score, int) or not 0 <= score <= 100:
-        errors.append(f"{prefix}.recommendation_score must be an integer from 0 to 100")
+        errors.append(f"{prefix}.recommendation_score 必须是0到100之间的整数")
     component_scores = article.get("component_scores") or {}
     for field in ("relevance", "novelty", "quality", "methodology", "inspiration"):
         value = component_scores.get(field)
         if not isinstance(value, int) or not 0 <= value <= 100:
-            errors.append(f"{prefix}.component_scores.{field} must be an integer from 0 to 100")
+            errors.append(f"{prefix}.component_scores.{field} 必须是0到100之间的整数")
     why = clean_text(article.get("why_worth_reading"))
     if not why:
-        errors.append(f"{prefix}.why_worth_reading is required")
+        errors.append(f"{prefix}.why_worth_reading 为必填字段")
     elif len(why) > 100:
-        errors.append(f"{prefix}.why_worth_reading exceeds 100 characters")
+        errors.append(f"{prefix}.why_worth_reading 超过100个字符")
     findings = _list(article.get("core_findings"))
     if not 3 <= len(findings) <= 5:
-        errors.append(f"{prefix}.core_findings must contain 3-5 evidence-bound items")
+        errors.append(f"{prefix}.core_findings 必须包含3–5条受证据约束的要点")
     terms = _term_explanations(article.get("term_explanations"))
     if require_term_explanations and not terms:
-        errors.append(f"{prefix}.term_explanations must cover the specialized terms used in this article")
+        errors.append(f"{prefix}.term_explanations 必须覆盖本篇论文中使用的专业术语")
     seen_terms: set[str] = set()
     for term_index, item in enumerate(terms):
         term_prefix = f"{prefix}.term_explanations[{term_index}]"
@@ -69,35 +69,35 @@ def validate_article(
         academic = clean_text(item.get("academic_explanation"))
         plain = clean_text(item.get("plain_explanation"))
         if not term:
-            errors.append(f"{term_prefix}.term is required")
+            errors.append(f"{term_prefix}.term 为必填字段")
         else:
             key = term.casefold()
             if key in seen_terms:
-                errors.append(f"{term_prefix}.term duplicates another term in the same article")
+                errors.append(f"{term_prefix}.term 与本篇论文中的其他术语重复")
             seen_terms.add(key)
         if not academic:
-            errors.append(f"{term_prefix}.academic_explanation is required")
+            errors.append(f"{term_prefix}.academic_explanation 为必填字段")
         elif len(academic) > 180:
-            errors.append(f"{term_prefix}.academic_explanation exceeds 180 characters")
+            errors.append(f"{term_prefix}.academic_explanation 超过180个字符")
         if not plain:
-            errors.append(f"{term_prefix}.plain_explanation is required")
+            errors.append(f"{term_prefix}.plain_explanation 为必填字段")
         elif len(plain) > 180:
-            errors.append(f"{term_prefix}.plain_explanation exceeds 180 characters")
+            errors.append(f"{term_prefix}.plain_explanation 超过180个字符")
         if academic and plain and academic == plain:
-            errors.append(f"{term_prefix} must provide distinct academic and plain-language explanations")
+            errors.append(f"{term_prefix} 的学术解释和大白话解释不能完全相同")
     inspiration = article.get("research_inspiration") or {}
     if not isinstance(inspiration, dict):
-        errors.append(f"{prefix}.research_inspiration must be an object")
+        errors.append(f"{prefix}.research_inspiration 必须是对象")
     else:
         for field in REQUIRED_INSPIRATION:
             if not _list(inspiration.get(field)):
-                errors.append(f"{prefix}.research_inspiration.{field} is required")
+                errors.append(f"{prefix}.research_inspiration.{field} 为必填字段")
     if not 1 <= len(_list(article.get("tags"))) <= 8:
-        errors.append(f"{prefix}.tags must contain 1-8 focused tags")
+        errors.append(f"{prefix}.tags 必须包含1–8个聚焦标签")
     if strict and article.get("score_status") != "evidence_reviewed":
-        errors.append(f"{prefix}.score_status must be evidence_reviewed after Codex checks the abstract/full text")
+        errors.append(f"Codex 核对摘要或全文后，{prefix}.score_status 必须设为 evidence_reviewed")
     if article.get("strong_recommendation") and len(_list(article.get("strong_recommendation_reasons"))) < 1:
-        errors.append(f"{prefix}.strong_recommendation_reasons is required for a strong recommendation")
+        errors.append(f"强烈推荐时必须填写 {prefix}.strong_recommendation_reasons")
     return errors
 
 
@@ -126,11 +126,11 @@ def render_article(article: dict[str, Any], rank: int) -> str:
         "",
         f"**英文原题：** {clean_text(article['title'])}",
         "",
-        f"- Journal：{clean_text(article['journal'])}",
-        f"- Published date：{clean_text(article['publication_date'])}",
+        f"- 期刊：{clean_text(article['journal'])}",
+        f"- 发表日期：{clean_text(article['publication_date'])}",
         f"- DOI：{doi}",
-        f"- Article URL：{clean_text(article['url'])}",
-        f"- Article type：{clean_text(article['article_type'])}",
+        f"- 论文链接：{clean_text(article['url'])}",
+        f"- 论文类型：{clean_text(article['article_type'])}",
         "",
         f"**推荐指数：{article['recommendation_score']}/100**",
         f"**相关性：{stars(int(components.get('relevance') or 0))}**",
@@ -181,21 +181,21 @@ def render_article(article: dict[str, Any], rank: int) -> str:
 def render_report(payload: dict[str, Any], strict: bool = True) -> str:
     articles = payload.get("articles") or []
     if not isinstance(articles, list):
-        raise TypeError("articles must be an array")
+        raise TypeError("articles 必须是数组")
     errors: list[str] = []
     require_term_explanations = clean_text(payload.get("term_explanation_mode")).casefold() == "dual"
     for index, article in enumerate(articles):
         if not isinstance(article, dict):
-            errors.append(f"article[{index}] must be an object")
+            errors.append(f"article[{index}] 必须是对象")
         else:
             errors.extend(validate_article(article, index, strict, require_term_explanations))
     ideas = _list(payload.get("research_ideas"))
     if articles and not 1 <= len(ideas) <= 3:
-        errors.append("research_ideas must contain 1-3 evidence-grounded ideas")
+        errors.append("research_ideas 必须包含1–3个以证据为基础的研究思路")
     if strict and not 0 <= len(articles) <= 10:
-        errors.append("articles must contain at most 10 items")
+        errors.append("articles 最多只能包含10篇论文")
     if errors:
-        raise ValueError("Review payload validation failed:\n- " + "\n- ".join(errors))
+        raise ValueError("已复核数据验证失败：\n- " + "\n- ".join(errors))
 
     report_date = clean_text(payload.get("date")) or datetime.now().astimezone().date().isoformat()
     metadata = payload.get("metadata") or {}
@@ -218,9 +218,9 @@ def render_report(payload: dict[str, Any], strict: bool = True) -> str:
         parts.extend([
             "今天没有达到推荐阈值且证据充分的论文。宁缺毋滥，不用低相关性论文填充名额。",
             "",
-            "## 今日最值得阅读 TOP 3",
+            "## 今日最值得阅读前三名",
             "",
-            "今日无符合条件的 TOP 3。",
+            "今日没有符合条件的前三名论文。",
             "",
             "## 今日研究灵感",
             "",
@@ -229,7 +229,7 @@ def render_report(payload: dict[str, Any], strict: bool = True) -> str:
         return "\n".join(parts).rstrip() + "\n"
 
     parts.append("\n\n---\n\n".join(render_article(article, rank) for rank, article in enumerate(articles, 1)))
-    parts.extend(["", "## 今日最值得阅读 TOP 3", ""])
+    parts.extend(["", "## 今日最值得阅读前三名", ""])
     medals = ("🥇", "🥈", "🥉")
     ordinals = ("第一篇", "第二篇", "第三篇")
     for index, article in enumerate(articles[:3]):
@@ -246,10 +246,10 @@ def render_report(payload: dict[str, Any], strict: bool = True) -> str:
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", required=True, help="Codex-reviewed JSON")
-    parser.add_argument("--output", required=True, help="Markdown report")
-    parser.add_argument("--allow-draft", action="store_true", help="Allow preliminary score_status for debugging only")
+    parser = ChineseArgumentParser(description=__doc__)
+    parser.add_argument("--input", required=True, help="经过 Codex 复核的 JSON")
+    parser.add_argument("--output", required=True, help="Markdown 报告路径")
+    parser.add_argument("--allow-draft", action="store_true", help="仅调试时允许使用初步 score_status")
     return parser.parse_args(argv)
 
 
@@ -260,7 +260,7 @@ def main(argv: list[str] | None = None) -> int:
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(report, encoding="utf-8", newline="\n")
-    print(f"Rendered {len(payload.get('articles') or [])} article(s) to {output}.")
+    print(f"已将 {len(payload.get('articles') or [])} 篇论文写入报告：{output}")
     return 0
 
 

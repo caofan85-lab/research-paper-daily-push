@@ -1,29 +1,29 @@
-# Research topics
+# 研究主题
 
-This file is intentionally unconfigured in the public template. Replace the empty sections with the research context that Codex should use during evidence review. Keep the machine-readable search and scoring terms synchronized in `config/research_profile.json`.
+公开模板有意不预设任何研究方向。请在下列空白部分填写 Codex 在证据复核时应使用的研究背景，并同步更新 `config/research_profile.json` 中可供程序读取的检索词和评分规则。
 
-## Research subject or target system
-
-
-## Central scientific questions
+## 研究对象或目标体系
 
 
-## Priority order
+## 核心科学问题
 
 
-## Important intersections between topics
+## 研究优先级
 
 
-## Preferred study designs, methods, or datasets
+## 主题之间的重要交叉点
 
 
-## Exclusion rules
+## 偏好的研究设计、方法或数据集
 
 
-## Strong-recommendation conditions
+## 排除规则
 
 
-## Research roadmap or stages
+## 强烈推荐条件
 
 
-## Preferred report tags
+## 研究路线或阶段
+
+
+## 偏好的报告标签

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Load and validate the user-owned research profile."""
+"""读取并验证由用户维护的研究配置。"""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ DEFAULT_PROFILE = SKILL_DIR / "config" / "research_profile.json"
 
 
 class ProfileError(ValueError):
-    """Raised when the research profile cannot safely drive a run."""
+    """研究配置不足以安全执行任务时抛出。"""
 
 
 def _list_of_dicts(value: Any) -> list[dict[str, Any]]:
@@ -26,10 +26,10 @@ def _list_of_dicts(value: Any) -> list[dict[str, Any]]:
 def load_profile(path: str | Path = DEFAULT_PROFILE, *, require_configured: bool = True) -> dict[str, Any]:
     profile = load_json(path, None)
     if not isinstance(profile, dict):
-        raise ProfileError(f"Research profile is missing or invalid: {path}")
+        raise ProfileError(f"研究配置不存在或格式无效：{path}")
     if require_configured and not profile.get("configured"):
         raise ProfileError(
-            "Research topic is not configured. Fill config/research_profile.json and set configured=true."
+            "尚未配置研究主题。请填写 config/research_profile.json，并将 configured 设为 true。"
         )
 
     profile.setdefault("profile_name", "")
@@ -50,12 +50,12 @@ def load_profile(path: str | Path = DEFAULT_PROFILE, *, require_configured: bool
 
     if require_configured:
         if not clean_text(profile.get("profile_name")):
-            raise ProfileError("profile_name is required when configured=true")
+            raise ProfileError("configured=true 时必须填写 profile_name")
         if not profile_queries(profile, "all"):
-            raise ProfileError("At least one default query is required")
+            raise ProfileError("至少需要配置一条默认查询语句")
         groups = topic_groups(profile)
         if not groups:
-            raise ProfileError("At least one valid topic_group is required")
+            raise ProfileError("至少需要配置一个有效的 topic_group")
     return profile
 
 
@@ -71,8 +71,8 @@ def profile_queries(profile: dict[str, Any], mode: str) -> list[str]:
 
     configured_mode = (profile.get("modes") or {}).get(mode)
     if configured_mode is None:
-        available = ", ".join(sorted((profile.get("modes") or {}).keys())) or "none"
-        raise ProfileError(f"Unknown profile mode '{mode}'. Available focused modes: {available}")
+        available = ", ".join(sorted((profile.get("modes") or {}).keys())) or "无"
+        raise ProfileError(f"未知的研究配置模式“{mode}”。可用聚焦模式：{available}")
     queries = configured_mode.get("queries") if isinstance(configured_mode, dict) else configured_mode
     return unique_strings(queries or [])
 

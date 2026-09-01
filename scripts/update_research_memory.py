@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Maintain compact, persistent research memory from delivered daily reports."""
+"""根据已交付的每日报告维护精简、持久化的研究记忆。"""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from common import (
+    ChineseArgumentParser,
     atomic_write_json,
     clean_text,
     load_json,
@@ -311,16 +312,16 @@ def build_context(memory: dict[str, Any], *, recent: int = 10) -> dict[str, Any]
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ChineseArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    learn = subparsers.add_parser("learn", help="Learn from one delivered, evidence-reviewed report")
-    learn.add_argument("--input", required=True, help="Reviewed report JSON")
+    learn = subparsers.add_parser("learn", help="从一份已经交付且经过证据复核的报告中学习")
+    learn.add_argument("--input", required=True, help="已复核报告 JSON")
     learn.add_argument("--memory", default=str(DEFAULT_MEMORY))
     learn.add_argument("--profile", default=str(DEFAULT_PROFILE))
     learn.add_argument("--delivery", default="local-report")
 
-    context = subparsers.add_parser("context", help="Print a compact context for the next review")
+    context = subparsers.add_parser("context", help="输出供下一次复核使用的精简上下文")
     context.add_argument("--memory", default=str(DEFAULT_MEMORY))
     context.add_argument("--recent", type=int, default=10)
     context.add_argument("--output")
@@ -332,7 +333,7 @@ def main() -> int:
     if args.command == "learn":
         payload = load_json(args.input, None)
         if not isinstance(payload, dict):
-            raise SystemExit(f"Reviewed JSON is missing or invalid: {args.input}")
+            raise SystemExit(f"已复核 JSON 不存在或格式无效：{args.input}")
         memory = load_memory(args.memory)
         profile = load_profile(args.profile, require_configured=False)
         memory, result = learn_report(
@@ -346,11 +347,11 @@ def main() -> int:
         return 0
 
     if args.recent < 1:
-        raise SystemExit("--recent must be at least 1")
+        raise SystemExit("--recent 必须至少为1")
     context = build_context(load_memory(args.memory), recent=args.recent)
     if args.output:
         atomic_write_json(args.output, context)
-        print(f"Research memory context ready: {args.output}")
+        print(f"研究记忆上下文已生成：{args.output}")
     else:
         print(json.dumps(context, ensure_ascii=False, indent=2))
     return 0

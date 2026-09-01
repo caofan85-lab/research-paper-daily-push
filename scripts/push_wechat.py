@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Send a completed report through WxPusher, ServerChan, or a WeCom webhook."""
+"""通过 WxPusher、Server酱或企业微信 Webhook 发送完整报告。"""
 
 from __future__ import annotations
 
@@ -10,13 +10,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 
-from common import atomic_write_json, form_request, json_request, utc_now_iso
+from common import ChineseArgumentParser, atomic_write_json, form_request, json_request, utc_now_iso
 
 PROVIDER_PRIORITY = ("wxpusher", "serverchan", "wecom")
 
 
 def wxpusher_settings() -> tuple[str, list[str]]:
-    """Return validated WxPusher settings without logging credential values."""
+    """返回经过验证的 WxPusher 配置，不记录任何凭据内容。"""
     token = os.environ.get("WXPUSHER_APP_TOKEN", "").strip()
     uids = [
         value.strip()
@@ -24,11 +24,11 @@ def wxpusher_settings() -> tuple[str, list[str]]:
         if value.strip()
     ]
     if not token or not uids:
-        raise ValueError("WXPUSHER_APP_TOKEN and WXPUSHER_UID must be non-empty")
+        raise ValueError("WXPUSHER_APP_TOKEN 和 WXPUSHER_UID 不能为空")
     if not token.startswith("AT_"):
-        raise ValueError("WXPUSHER_APP_TOKEN must start with AT_")
+        raise ValueError("WXPUSHER_APP_TOKEN 必须以 AT_ 开头")
     if any(not uid.startswith("UID_") for uid in uids):
-        raise ValueError("every WXPUSHER_UID must start with UID_")
+        raise ValueError("每个 WXPUSHER_UID 都必须以 UID_ 开头")
     return token, uids
 
 
@@ -105,7 +105,7 @@ def send_wxpusher(title: str, report: str) -> list[dict[str, Any]]:
             "https://wxpusher.zjiecode.com/api/send/message", method="POST", payload=payload
         )
         if response.get("code") != 1000 or response.get("success") is False:
-            raise RuntimeError(f"WxPusher rejected message: code={response.get('code')}, msg={response.get('msg')}")
+            raise RuntimeError(f"WxPusher 拒绝了消息：code={response.get('code')}，msg={response.get('msg')}")
         responses.append({"code": response.get("code"), "success": response.get("success", True)})
     return responses
 
@@ -114,7 +114,7 @@ def serverchan_url(sendkey: str) -> str:
     if sendkey.startswith("sctp"):
         match = re.fullmatch(r"sctp(\d+)t.+", sendkey)
         if not match:
-            raise ValueError("Invalid ServerChan sctp SendKey format")
+            raise ValueError("Server酱 sctp SendKey 格式无效")
         return f"https://{match.group(1)}.push.ft07.com/send/{quote(sendkey, safe='')}.send"
     return f"https://sctapi.ftqq.com/{quote(sendkey, safe='')}.send"
 
@@ -122,7 +122,7 @@ def serverchan_url(sendkey: str) -> str:
 def send_serverchan(title: str, report: str) -> list[dict[str, Any]]:
     sendkey = os.environ["SERVERCHAN_SENDKEY"].strip()
     if not sendkey:
-        raise ValueError("SERVERCHAN_SENDKEY must be non-empty")
+        raise ValueError("SERVERCHAN_SENDKEY 不能为空")
     responses: list[dict[str, Any]] = []
     chunks = chunk_utf8(report, 30000)
     for index, chunk in enumerate(chunks, 1):
@@ -131,7 +131,7 @@ def send_serverchan(title: str, report: str) -> list[dict[str, Any]]:
             serverchan_url(sendkey), {"title": (title + suffix)[:32], "desp": chunk}
         )
         if int(response.get("code", -1)) != 0:
-            raise RuntimeError(f"ServerChan rejected message: code={response.get('code')}, message={response.get('message') or response.get('msg')}")
+            raise RuntimeError(f"Server酱拒绝了消息：code={response.get('code')}，message={response.get('message') or response.get('msg')}")
         responses.append({"code": response.get("code"), "success": True})
     return responses
 
@@ -140,9 +140,9 @@ def validated_wecom_url() -> str:
     url = (os.environ.get("WECOM_WEBHOOK_URL") or os.environ.get("WECHAT_WORK_WEBHOOK_URL") or "").strip()
     parsed = urlparse(url)
     if parsed.scheme != "https" or parsed.hostname != "qyapi.weixin.qq.com":
-        raise ValueError("WeCom webhook must use https://qyapi.weixin.qq.com/")
+        raise ValueError("企业微信 Webhook 必须使用 https://qyapi.weixin.qq.com/")
     if parsed.path != "/cgi-bin/webhook/send" or not parsed.query.startswith("key="):
-        raise ValueError("Invalid WeCom group robot webhook path")
+        raise ValueError("企业微信群机器人 Webhook 路径无效")
     return url
 
 
@@ -160,7 +160,7 @@ def send_wecom(title: str, report: str) -> list[dict[str, Any]]:
             payload={"msgtype": "markdown", "markdown": {"content": f"{header}\n\n{chunk}"}},
         )
         if int(response.get("errcode", -1)) != 0:
-            raise RuntimeError(f"WeCom rejected message: errcode={response.get('errcode')}, errmsg={response.get('errmsg')}")
+            raise RuntimeError(f"企业微信拒绝了消息：errcode={response.get('errcode')}，errmsg={response.get('errmsg')}")
         responses.append({"code": response.get("errcode"), "success": True})
     return responses
 
@@ -173,44 +173,44 @@ SENDERS = {
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--report", help="Completed Markdown report to send")
+    parser = ChineseArgumentParser(description=__doc__)
+    parser.add_argument("--report", help="需要发送的完整 Markdown 报告")
     parser.add_argument("--title")
     parser.add_argument("--provider", choices=("auto",) + PROVIDER_PRIORITY, default="auto")
-    parser.add_argument("--result-json", help="Write a credential-free delivery status JSON")
-    parser.add_argument("--dry-run", action="store_true", help="Validate/chunk without any network call")
+    parser.add_argument("--result-json", help="写入不含凭据的交付状态 JSON")
+    parser.add_argument("--dry-run", action="store_true", help="仅验证配置和分段，不发起网络请求")
     action = parser.add_mutually_exclusive_group()
     action.add_argument(
         "--check-config",
         action="store_true",
-        help="Validate provider settings locally without sending a message",
+        help="在本地验证通知渠道配置，不发送消息",
     )
     action.add_argument(
         "--test-message",
         action="store_true",
-        help="Send a short built-in connectivity test instead of a report",
+        help="发送内置的简短连通性测试，不读取报告",
     )
     args = parser.parse_args(argv)
     if not args.report and not args.check_config and not args.test_message:
-        parser.error("one of --report, --check-config, or --test-message is required")
+        parser.error("必须指定 --report、--check-config 或 --test-message 中的一项")
     return args
 
 
 def validate_provider_config(provider: str) -> dict[str, Any]:
-    """Validate the selected provider without returning or printing credentials."""
+    """验证所选通知渠道，但不返回或输出凭据。"""
     if provider == "wxpusher":
         _, uids = wxpusher_settings()
         return {"recipients": len(uids)}
     if provider == "serverchan":
         sendkey = os.environ.get("SERVERCHAN_SENDKEY", "").strip()
         if not sendkey:
-            raise ValueError("SERVERCHAN_SENDKEY must be non-empty")
+            raise ValueError("SERVERCHAN_SENDKEY 不能为空")
         serverchan_url(sendkey)
         return {}
     if provider == "wecom":
         validated_wecom_url()
         return {}
-    raise ValueError(f"Unsupported provider: {provider}")
+    raise ValueError(f"不支持的通知渠道：{provider}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -232,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         config_summary = validate_provider_config(provider)
     except ValueError as exc:
-        print(f"Configuration invalid for {provider}: {exc}")
+        print(f"{provider} 配置无效：{exc}")
         return 2
 
     if args.check_config:
@@ -245,8 +245,8 @@ def main(argv: list[str] | None = None) -> int:
         }
         if args.result_json:
             atomic_write_json(args.result_json, status)
-        recipient_note = f"; recipients={config_summary['recipients']}" if "recipients" in config_summary else ""
-        print(f"Configuration valid: provider={provider}{recipient_note}. No credentials printed.")
+        recipient_note = f"；接收者数量={config_summary['recipients']}" if "recipients" in config_summary else ""
+        print(f"配置有效：通知渠道={provider}{recipient_note}。未输出任何凭据。")
         return 0
 
     title = args.title or ("WxPusher 配置测试" if args.test_message else "今日科研文献雷达")
@@ -279,7 +279,8 @@ def main(argv: list[str] | None = None) -> int:
         }
     if args.result_json:
         atomic_write_json(args.result_json, status)
-    print(f"Delivery {'validated' if args.dry_run else 'completed'} via {provider}; {status['chunks']} chunk(s).")
+    action = "验证完成" if args.dry_run else "发送完成"
+    print(f"{provider} {action}；共 {status['chunks']} 个消息分段。")
     return 0
 
 
