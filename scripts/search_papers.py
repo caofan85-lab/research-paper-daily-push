@@ -44,6 +44,7 @@ OPENALEX_SELECT_FIELDS = (
     "best_oa_location",
     "is_retracted",
 )
+OPENALEX_MAX_RESULTS_PER_QUERY = 600
 
 
 def compact_query(query: str) -> str:
@@ -232,11 +233,18 @@ def search_openalex(queries: list[str], start: date, end: date) -> list[dict[str
     output: list[dict[str, Any]] = []
     headers: dict[str, str] = {}
     api_key = os.environ.get("OPENALEX_API_KEY", "").strip()
+    mailto = os.environ.get("OPENALEX_MAILTO", "").strip()
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
-    for index, query in enumerate(queries):
-        params = urlencode(
-            {
+    for query_index, query in enumerate(queries):
+        cursor = "*"
+        retrieved_for_query = 0
+        seen_cursors: set[str] = set()
+        while cursor and retrieved_for_query < OPENALEX_MAX_RESULTS_PER_QUERY:
+            if cursor in seen_cursors:
+                break
+            seen_cursors.add(cursor)
+            request_params: dict[str, Any] = {
                 "search": query,
                 "filter": (
                     f"from_publication_date:{start.isoformat()},"
@@ -244,59 +252,75 @@ def search_openalex(queries: list[str], start: date, end: date) -> list[dict[str
                 ),
                 "sort": "publication_date:desc",
                 "per_page": 100,
+                "cursor": cursor,
                 "select": ",".join(OPENALEX_SELECT_FIELDS),
             }
-        )
-        payload = json_request(
-            f"https://api.openalex.org/works?{params}", headers=headers
-        )
-        for item in payload.get("results") or []:
-            doi = normalize_doi(item.get("doi"))
-            openalex_url = clean_text(item.get("id"))
-            openalex_id = openalex_url.rsplit("/", 1)[-1] if openalex_url else ""
-            primary_location = item.get("primary_location") or {}
-            best_oa_location = item.get("best_oa_location") or {}
-            source = primary_location.get("source") or {}
-            abstract = reconstruct_openalex_abstract(item.get("abstract_inverted_index"))
-            work_type = clean_text(item.get("type"))
-            article_type = f"retraction; {work_type}" if item.get("is_retracted") else work_type
-            landing_page = clean_text(
-                first_nonempty(
-                    best_oa_location.get("landing_page_url"),
-                    primary_location.get("landing_page_url"),
-                    openalex_url,
+            if mailto:
+                request_params["mailto"] = mailto
+            params = urlencode(request_params)
+            payload = json_request(
+                f"https://api.openalex.org/works?{params}", headers=headers
+            )
+            records = payload.get("results") or []
+            remaining = OPENALEX_MAX_RESULTS_PER_QUERY - retrieved_for_query
+            records = records[:remaining]
+            for item in records:
+                doi = normalize_doi(item.get("doi"))
+                openalex_url = clean_text(item.get("id"))
+                openalex_id = openalex_url.rsplit("/", 1)[-1] if openalex_url else ""
+                primary_location = item.get("primary_location") or {}
+                best_oa_location = item.get("best_oa_location") or {}
+                source = primary_location.get("source") or {}
+                abstract = reconstruct_openalex_abstract(item.get("abstract_inverted_index"))
+                work_type = clean_text(item.get("type"))
+                article_type = (
+                    f"retraction; {work_type}" if item.get("is_retracted") else work_type
                 )
-            )
-            output.append(
-                {
-                    "doi": doi,
-                    "title": clean_text(item.get("display_name")),
-                    "authors": unique_strings(
-                        (authorship.get("author") or {}).get("display_name")
-                        for authorship in item.get("authorships") or []
-                        if isinstance(authorship, dict)
-                    ),
-                    "journal": clean_text(
-                        first_nonempty(
-                            source.get("display_name"),
-                            primary_location.get("raw_source_name"),
-                        )
-                    ),
-                    "publication_date": parse_date(item.get("publication_date")),
-                    "url": f"https://doi.org/{doi}" if doi else landing_page,
-                    "article_type": article_type,
-                    "abstract": abstract,
-                    "sources": ["OpenAlex"],
-                    "source_ids": {"openalex": openalex_id} if openalex_id else {},
-                    "citation_count": int(item.get("cited_by_count") or 0),
-                    "is_open_access": bool((item.get("open_access") or {}).get("is_oa")),
-                    "is_preprint": work_type.casefold() == "preprint",
-                    "needs_verification": (
-                        [] if abstract else ["OpenAlex 未提供摘要，结论需从原文核实"]
-                    ),
-                }
-            )
-        if index + 1 < len(queries):
+                landing_page = clean_text(
+                    first_nonempty(
+                        best_oa_location.get("landing_page_url"),
+                        primary_location.get("landing_page_url"),
+                        openalex_url,
+                    )
+                )
+                output.append(
+                    {
+                        "doi": doi,
+                        "title": clean_text(item.get("display_name")),
+                        "authors": unique_strings(
+                            (authorship.get("author") or {}).get("display_name")
+                            for authorship in item.get("authorships") or []
+                            if isinstance(authorship, dict)
+                        ),
+                        "journal": clean_text(
+                            first_nonempty(
+                                source.get("display_name"),
+                                primary_location.get("raw_source_name"),
+                            )
+                        ),
+                        "publication_date": parse_date(item.get("publication_date")),
+                        "url": f"https://doi.org/{doi}" if doi else landing_page,
+                        "article_type": article_type,
+                        "abstract": abstract,
+                        "sources": ["OpenAlex"],
+                        "source_ids": {"openalex": openalex_id} if openalex_id else {},
+                        "citation_count": int(item.get("cited_by_count") or 0),
+                        "is_open_access": bool(
+                            (item.get("open_access") or {}).get("is_oa")
+                        ),
+                        "is_preprint": work_type.casefold() == "preprint",
+                        "needs_verification": (
+                            [] if abstract else ["OpenAlex 未提供摘要，结论需从原文核实"]
+                        ),
+                    }
+                )
+            retrieved_for_query += len(records)
+            next_cursor = clean_text((payload.get("meta") or {}).get("next_cursor"))
+            if not records or not next_cursor or next_cursor in seen_cursors:
+                break
+            cursor = next_cursor
+            time.sleep(0.15)
+        if query_index + 1 < len(queries):
             time.sleep(0.15)
     return output
 

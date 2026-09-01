@@ -15,7 +15,7 @@ description: 根据用户配置的研究方向，检索、复核、评分、去�
 
 ## 工作流程
 
-1. 运行 `python scripts/run_daily.py collect --mode <mode>`。`all` 使用默认查询，聚焦模式名称来自研究配置。命令会查询 Europe PMC、Crossref、Semantic Scholar、OpenAlex 和 bioRxiv，合并重复记录，排除确认推送过的论文，并写入 `data/runs/YYYY-MM-DD/review_queue.json`。OpenAlex 可匿名检索；如配置 `OPENALEX_API_KEY`，只能从环境变量读取，不能写入仓库或日志。
+1. 运行 `python scripts/run_daily.py collect --mode <mode>`。`all` 使用默认查询，聚焦模式名称来自研究配置。命令会查询 Europe PMC、Crossref、Semantic Scholar、OpenAlex 和 bioRxiv，合并重复记录，排除确认推送过的论文，并写入 `data/runs/YYYY-MM-DD/review_queue.json`。OpenAlex 可匿名检索，并使用游标读取每条查询最多600条近期记录；可选的 `OPENALEX_API_KEY` 和 `OPENALEX_MAILTO` 只能从环境变量读取，不能写入仓库或日志。
 2. 先建立近24小时优先的候选池。如果达到70分的初筛候选少于5篇，自动扩展到最近7天。学术接口经常只提供日级日期，因此要把“24小时”视为优先近似窗口，并在报告中说明实际范围。
 3. 阅读限定长度的 `research_memory_context`、候选题名、摘要、元数据、评分证据和待核实提示。研究记忆只用于发现连续证据、未解决问题、研究空白和重复思路，不能当成用户明确偏好的证明。
 4. 对可能入选的论文进行证据核验。如果摘要缺失、截断、相互矛盾或不足以支持实质性结论，应核对 DOI、出版商页面或可信论文库页面。不能只根据题名推断结果。

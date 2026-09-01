@@ -60,7 +60,14 @@ class OpenAlexSearchTests(unittest.TestCase):
             ]
         }
         with (
-            patch.dict(os.environ, {"OPENALEX_API_KEY": "test-key"}, clear=True),
+            patch.dict(
+                os.environ,
+                {
+                    "OPENALEX_API_KEY": "test-key",
+                    "OPENALEX_MAILTO": "researcher@example.org",
+                },
+                clear=True,
+            ),
             patch.object(search_papers, "json_request", return_value=payload) as request,
         ):
             results = search_papers.search_openalex(
@@ -75,6 +82,8 @@ class OpenAlexSearchTests(unittest.TestCase):
         )
         self.assertEqual(query["sort"], ["publication_date:desc"])
         self.assertEqual(query["per_page"], ["100"])
+        self.assertEqual(query["cursor"], ["*"])
+        self.assertEqual(query["mailto"], ["researcher@example.org"])
         self.assertIn("abstract_inverted_index", query["select"][0])
         self.assertEqual(
             request.call_args.kwargs["headers"],
@@ -155,6 +164,36 @@ class OpenAlexSearchTests(unittest.TestCase):
     def test_daily_collection_enables_openalex_by_default(self) -> None:
         args = run_daily.parse_args(["collect"])
         self.assertIn("openalex", args.sources.split(","))
+
+    def test_cursor_pagination_follows_next_cursor(self) -> None:
+        def work(identifier: str) -> dict[str, object]:
+            return {
+                "id": f"https://openalex.org/{identifier}",
+                "display_name": identifier,
+                "authorships": [],
+                "primary_location": {},
+                "publication_date": "2026-09-01",
+                "type": "article",
+                "abstract_inverted_index": {"Abstract": [0]},
+                "open_access": {},
+                "is_retracted": False,
+            }
+
+        pages = [
+            {"meta": {"next_cursor": "second-page"}, "results": [work("W1")]},
+            {"meta": {"next_cursor": None}, "results": [work("W2")]},
+        ]
+        with patch.object(search_papers, "json_request", side_effect=pages) as request:
+            papers = search_papers.search_openalex(
+                ["plant"], date(2026, 9, 1), date(2026, 9, 1)
+            )
+
+        cursors = [
+            parse_qs(urlparse(call.args[0]).query)["cursor"][0]
+            for call in request.call_args_list
+        ]
+        self.assertEqual(cursors, ["*", "second-page"])
+        self.assertEqual([paper["source_ids"]["openalex"] for paper in papers], ["W1", "W2"])
 
 
 if __name__ == "__main__":

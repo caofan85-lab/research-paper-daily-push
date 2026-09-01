@@ -24,7 +24,7 @@
 - Python 3.10 或更高版本。
 - 核心脚本只使用 Python 标准库，无需额外安装依赖。
 - 联网检索和消息推送需要运行环境能够访问相应学术接口与通知服务。
-- [OpenAlex API](https://help.openalex.org/api/) 支持匿名基础检索；需要更高调用额度时，可申请 API Key 并存入 `OPENALEX_API_KEY` 环境变量。
+- [OpenAlex API](https://help.openalex.org/api/) 支持匿名基础检索；需要更高调用额度时，可申请 API Key 并存入 `OPENALEX_API_KEY` 环境变量，也可用 `OPENALEX_MAILTO` 提供联系邮箱。OpenAlex 检索使用游标翻页，每条查询最多读取600条近期记录。
 
 ## 安装
 
