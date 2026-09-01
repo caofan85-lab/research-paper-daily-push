@@ -83,6 +83,61 @@ class RankingTests(unittest.TestCase):
             result = rank_papers.rank_payload({"papers": [{}]}, profile(), threshold=70)
         self.assertEqual(result["recommendations"], [])
 
+    def test_cross_topic_bonus_requires_every_configured_topic(self) -> None:
+        configured_profile = {
+            "topic_groups": [
+                {"label": "低温", "weight": 40, "terms": ["cold"]},
+                {"label": "多倍体", "weight": 40, "terms": ["polyploid"]},
+            ],
+            "cross_topic_bonuses": [
+                {
+                    "labels": ["低温", "多倍体"],
+                    "bonus": 10,
+                    "reason": "低温与多倍体交叉",
+                }
+            ],
+        }
+
+        partial_score, partial_topics, partial_evidence = rank_papers.score_relevance(
+            "cold acclimation", configured_profile
+        )
+        full_score, full_topics, full_evidence = rank_papers.score_relevance(
+            "cold acclimation in a polyploid plant", configured_profile
+        )
+
+        self.assertEqual(partial_topics, ["低温"])
+        self.assertEqual(partial_score, 40)
+        self.assertNotIn("低温与多倍体交叉", partial_evidence)
+        self.assertEqual(full_topics, ["低温", "多倍体"])
+        self.assertEqual(full_score, 93)
+        self.assertIn("低温与多倍体交叉", full_evidence)
+
+    def test_strong_recommendation_requires_every_topic_and_method(self) -> None:
+        configured_profile = {
+            "strong_recommendation_rules": [
+                {
+                    "labels": ["低温", "多倍体"],
+                    "methods": ["转录组", "Hi-C"],
+                    "min_score": 80,
+                    "reason": "核心主题与技术全部命中",
+                }
+            ]
+        }
+
+        missing_topic = rank_papers.strong_recommendation(
+            ["低温"], ["转录组", "Hi-C"], 90, configured_profile
+        )
+        missing_method = rank_papers.strong_recommendation(
+            ["低温", "多倍体"], ["转录组"], 90, configured_profile
+        )
+        complete = rank_papers.strong_recommendation(
+            ["低温", "多倍体"], ["转录组", "Hi-C"], 90, configured_profile
+        )
+
+        self.assertEqual(missing_topic, (False, []))
+        self.assertEqual(missing_method, (False, []))
+        self.assertEqual(complete, (True, ["核心主题与技术全部命中"]))
+
 
 class DeduplicationTests(unittest.TestCase):
     def test_doi_variants_are_recognized_as_duplicates(self) -> None:

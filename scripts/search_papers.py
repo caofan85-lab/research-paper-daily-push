@@ -123,44 +123,72 @@ def _crossref_date(item: dict[str, Any]) -> str:
 def search_crossref(queries: list[str], start: date, end: date) -> list[dict[str, Any]]:
     output: list[dict[str, Any]] = []
     mailto = os.environ.get("CROSSREF_MAILTO", "").strip()
-    for index, query in enumerate(queries):
-        params: dict[str, Any] = {
-            "query.bibliographic": compact_query(query),
-            "filter": f"from-pub-date:{start.isoformat()},until-pub-date:{end.isoformat()},type:journal-article",
-            "rows": 100,
-            "sort": "published",
-            "order": "desc",
-        }
-        if mailto:
-            params["mailto"] = mailto
-        payload = json_request(f"https://api.crossref.org/works?{urlencode(params)}")
-        for item in payload.get("message", {}).get("items", []):
-            authors = []
-            for author in item.get("author", []):
-                name = " ".join(filter(None, [clean_text(author.get("given")), clean_text(author.get("family"))]))
-                if name:
-                    authors.append(name)
-            doi = normalize_doi(item.get("DOI"))
-            output.append(
-                {
-                    "doi": doi,
-                    "title": clean_text(first_nonempty(*(item.get("title") or []))),
-                    "authors": unique_strings(authors),
-                    "journal": clean_text(first_nonempty(*(item.get("container-title") or []))),
-                    "publication_date": _crossref_date(item),
-                    "url": clean_text(first_nonempty(item.get("URL"), f"https://doi.org/{doi}" if doi else "")),
-                    "article_type": clean_text(item.get("type")),
-                    "abstract": clean_text(item.get("abstract")),
-                    "sources": ["Crossref"],
-                    "source_ids": {},
-                    "citation_count": int(item.get("is-referenced-by-count") or 0),
-                    "is_open_access": bool(item.get("license")),
-                    "is_preprint": item.get("type") == "posted-content",
-                    "needs_verification": [] if item.get("abstract") else ["Crossref 未提供摘要，结论需从原文核实"],
-                }
-            )
-        if index + 1 < len(queries):
-            time.sleep(0.15)
+    date_filter_pairs = (
+        ("from-online-pub-date", "until-online-pub-date"),
+        ("from-pub-date", "until-pub-date"),
+    )
+    request_total = len(queries) * len(date_filter_pairs)
+    request_index = 0
+    for query in queries:
+        for from_filter, until_filter in date_filter_pairs:
+            params: dict[str, Any] = {
+                "query.bibliographic": compact_query(query),
+                "filter": (
+                    f"{from_filter}:{start.isoformat()},"
+                    f"{until_filter}:{end.isoformat()},"
+                    "type:journal-article"
+                ),
+                "rows": 100,
+                "sort": "published",
+                "order": "desc",
+            }
+            if mailto:
+                params["mailto"] = mailto
+            payload = json_request(f"https://api.crossref.org/works?{urlencode(params)}")
+            for item in payload.get("message", {}).get("items", []):
+                authors = []
+                for author in item.get("author", []):
+                    name = " ".join(
+                        filter(
+                            None,
+                            [
+                                clean_text(author.get("given")),
+                                clean_text(author.get("family")),
+                            ],
+                        )
+                    )
+                    if name:
+                        authors.append(name)
+                doi = normalize_doi(item.get("DOI"))
+                output.append(
+                    {
+                        "doi": doi,
+                        "title": clean_text(first_nonempty(*(item.get("title") or []))),
+                        "authors": unique_strings(authors),
+                        "journal": clean_text(first_nonempty(*(item.get("container-title") or []))),
+                        "publication_date": _crossref_date(item),
+                        "url": clean_text(
+                            first_nonempty(
+                                item.get("URL"), f"https://doi.org/{doi}" if doi else ""
+                            )
+                        ),
+                        "article_type": clean_text(item.get("type")),
+                        "abstract": clean_text(item.get("abstract")),
+                        "sources": ["Crossref"],
+                        "source_ids": {},
+                        "citation_count": int(item.get("is-referenced-by-count") or 0),
+                        "is_open_access": bool(item.get("license")),
+                        "is_preprint": item.get("type") == "posted-content",
+                        "needs_verification": (
+                            []
+                            if item.get("abstract")
+                            else ["Crossref 未提供摘要，结论需从原文核实"]
+                        ),
+                    }
+                )
+            request_index += 1
+            if request_index < request_total:
+                time.sleep(0.15)
     return output
 
 
@@ -210,7 +238,8 @@ def search_semantic_scholar(queries: list[str], start: date, end: date) -> list[
                 }
             )
         if index + 1 < len(queries):
-            time.sleep(0.8 if not api_key else 0.15)
+            # 官方给 API Key 的初始限额为每秒 1 次；匿名请求还会共享公共额度。
+            time.sleep(1.05)
     return output
 
 

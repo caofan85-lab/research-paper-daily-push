@@ -42,6 +42,22 @@ Python 3.13.13
 git --version
 ```
 
+### 建议申请 Semantic Scholar API Key
+
+Semantic Scholar 允许不带 Key 检索，但匿名请求会与其他用户共享公共调用额度；访问繁忙时可能收到 `429` 限速响应。项目会继续使用其他数据源，不会因此让整次运行失败，但当天候选论文可能减少。
+
+计划每天定时运行时，建议在 [Semantic Scholar Academic Graph API](https://www.semanticscholar.org/product/api) 申请免费的 API Key，并把它保存为当前 Windows 用户的环境变量：
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  "SEMANTIC_SCHOLAR_API_KEY",
+  "替换为你的API Key",
+  "User"
+)
+```
+
+设置完成后，应完全关闭并重新打开 PowerShell 和 Codex。真实 API Key 不得写入 `.env.example`、脚本、截图或 Git 提交；`.env.example` 中的空变量仅用于说明项目支持哪些配置。
+
 ## 二、方法 A：下载 ZIP 安装，最适合新手
 
 1. 打开项目主页：<https://github.com/caofan85-lab/research-paper-daily-push>。
