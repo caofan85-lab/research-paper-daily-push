@@ -9,7 +9,7 @@
 ## 主要功能
 
 - 优先检索近24小时论文；高分候选不足时自动扩展到最近7天。
-- 使用 Europe PMC、Crossref、Semantic Scholar 和 bioRxiv 等稳定学术接口。
+- 使用 Europe PMC、Crossref、Semantic Scholar、OpenAlex 和 bioRxiv 等稳定学术接口。
 - 按研究相关性、创新性、论文质量、方法学价值和研究启发进行透明初筛。
 - 要求 Codex 阅读可用证据后重新评分，避免仅凭关键词或题名推荐。
 - 默认只推荐评分不低于70分的5–10篇论文，允许少于5篇或零推荐。
@@ -22,6 +22,7 @@
 - Python 3.10 或更高版本。
 - 核心脚本只使用 Python 标准库，无需额外安装依赖。
 - 联网检索和消息推送需要运行环境能够访问相应学术接口与通知服务。
+- [OpenAlex API](https://help.openalex.org/api/) 支持匿名基础检索；需要更高调用额度时，可申请 API Key 并存入 `OPENALEX_API_KEY` 环境变量。
 
 ## 安装
 
