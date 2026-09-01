@@ -1,5 +1,7 @@
 # research-paper-daily-push：每日科研文献雷达
 
+[![Python unittest](https://github.com/caofan85-lab/research-paper-daily-push/actions/workflows/unittest.yml/badge.svg)](https://github.com/caofan85-lab/research-paper-daily-push/actions/workflows/unittest.yml)
+
 这是一个开源的 Codex Skill，用于每天或每周检索近期科研论文，并经过初筛、证据复核、评分、去重和中文总结后，只推荐真正值得阅读的少量论文。它支持为每个专业术语同时生成严谨解释和大白话解释，也可以通过 WxPusher、Server酱或企业微信机器人推送报告，并在本地维护推送历史与研究记忆。
 
 公开模板**不包含任何预设研究主题、访问凭据、推送历史或学习记录**。在完成研究配置前，程序会停止检索，避免返回无关论文。
@@ -33,6 +35,7 @@
 ```powershell
 git clone https://github.com/caofan85-lab/research-paper-daily-push.git
 cd research-paper-daily-push
+python -m pip install -r requirements.txt
 ```
 
 也可以下载 ZIP，然后把整个 `research-paper-daily-push` 文件夹复制到 Codex 的 Skills 目录。
