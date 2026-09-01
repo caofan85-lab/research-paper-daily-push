@@ -11,6 +11,15 @@ The public package contains **no research topic, credentials, push history, or l
 3. Fill `config/research_profile.json` following `references/profile_schema.md`, then set `configured` to `true`.
 4. Optionally copy `.env.example` values into user or process environment variables. Never commit `.env` or real tokens.
 
+For WeChat delivery through WxPusher, follow the complete setup, binding, environment-variable, test, and troubleshooting guide in [`references/wxpusher_setup.md`](references/wxpusher_setup.md). The shortest verification flow is:
+
+```powershell
+python scripts/push_wechat.py --provider wxpusher --check-config
+python scripts/push_wechat.py --provider wxpusher --test-message
+```
+
+The first command is local-only and never prints credentials. The second command performs a real external push.
+
 ## Run
 
 ```powershell
@@ -22,6 +31,8 @@ After Codex reviews the queue and produces `reviewed_articles.json`:
 ```powershell
 python scripts/run_daily.py deliver --reviewed reviewed_articles.json --report daily-report.md --provider auto
 ```
+
+With `WXPUSHER_APP_TOKEN` and `WXPUSHER_UID` configured, `--provider auto` selects WxPusher first. To require WxPusher explicitly, use `--provider wxpusher`.
 
 Use `--skip-push --record-local-report` only after the report has actually been presented locally. A recurring schedule is intentionally not included because execution time, timezone, destination, and side-effect authorization are user-specific.
 

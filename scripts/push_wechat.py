@@ -15,6 +15,23 @@ from common import atomic_write_json, form_request, json_request, utc_now_iso
 PROVIDER_PRIORITY = ("wxpusher", "serverchan", "wecom")
 
 
+def wxpusher_settings() -> tuple[str, list[str]]:
+    """Return validated WxPusher settings without logging credential values."""
+    token = os.environ.get("WXPUSHER_APP_TOKEN", "").strip()
+    uids = [
+        value.strip()
+        for value in re.split(r"[,;]", os.environ.get("WXPUSHER_UID", ""))
+        if value.strip()
+    ]
+    if not token or not uids:
+        raise ValueError("WXPUSHER_APP_TOKEN and WXPUSHER_UID must be non-empty")
+    if not token.startswith("AT_"):
+        raise ValueError("WXPUSHER_APP_TOKEN must start with AT_")
+    if any(not uid.startswith("UID_") for uid in uids):
+        raise ValueError("every WXPUSHER_UID must start with UID_")
+    return token, uids
+
+
 def configured(provider: str) -> bool:
     if provider == "wxpusher":
         return bool(os.environ.get("WXPUSHER_APP_TOKEN") and os.environ.get("WXPUSHER_UID"))
@@ -68,10 +85,7 @@ def chunk_utf8(text: str, maximum_bytes: int) -> list[str]:
 
 
 def send_wxpusher(title: str, report: str) -> list[dict[str, Any]]:
-    token = os.environ["WXPUSHER_APP_TOKEN"].strip()
-    uids = [value.strip() for value in re.split(r"[,;]", os.environ["WXPUSHER_UID"]) if value.strip()]
-    if not token or not uids:
-        raise ValueError("WXPUSHER_APP_TOKEN and WXPUSHER_UID must be non-empty")
+    token, uids = wxpusher_settings()
     responses: list[dict[str, Any]] = []
     chunks = chunk_utf8(report, 18000)
     for index, chunk in enumerate(chunks, 1):
@@ -160,17 +174,47 @@ SENDERS = {
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--report", required=True)
-    parser.add_argument("--title", default="今日科研文献雷达")
+    parser.add_argument("--report", help="Completed Markdown report to send")
+    parser.add_argument("--title")
     parser.add_argument("--provider", choices=("auto",) + PROVIDER_PRIORITY, default="auto")
     parser.add_argument("--result-json", help="Write a credential-free delivery status JSON")
     parser.add_argument("--dry-run", action="store_true", help="Validate/chunk without any network call")
-    return parser.parse_args(argv)
+    action = parser.add_mutually_exclusive_group()
+    action.add_argument(
+        "--check-config",
+        action="store_true",
+        help="Validate provider settings locally without sending a message",
+    )
+    action.add_argument(
+        "--test-message",
+        action="store_true",
+        help="Send a short built-in connectivity test instead of a report",
+    )
+    args = parser.parse_args(argv)
+    if not args.report and not args.check_config and not args.test_message:
+        parser.error("one of --report, --check-config, or --test-message is required")
+    return args
+
+
+def validate_provider_config(provider: str) -> dict[str, Any]:
+    """Validate the selected provider without returning or printing credentials."""
+    if provider == "wxpusher":
+        _, uids = wxpusher_settings()
+        return {"recipients": len(uids)}
+    if provider == "serverchan":
+        sendkey = os.environ.get("SERVERCHAN_SENDKEY", "").strip()
+        if not sendkey:
+            raise ValueError("SERVERCHAN_SENDKEY must be non-empty")
+        serverchan_url(sendkey)
+        return {}
+    if provider == "wecom":
+        validated_wecom_url()
+        return {}
+    raise ValueError(f"Unsupported provider: {provider}")
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    report = Path(args.report).read_text(encoding="utf-8")
     provider = select_provider(args.provider)
     if provider is None:
         status = {
@@ -183,7 +227,36 @@ def main(argv: list[str] | None = None) -> int:
         if args.result_json:
             atomic_write_json(args.result_json, status)
         print("微信推送尚未配置。")
+        return 2 if args.check_config or args.test_message else 0
+
+    try:
+        config_summary = validate_provider_config(provider)
+    except ValueError as exc:
+        print(f"Configuration invalid for {provider}: {exc}")
+        return 2
+
+    if args.check_config:
+        status = {
+            "generated_at": utc_now_iso(),
+            "configured": True,
+            "success": True,
+            "provider": provider,
+            **config_summary,
+        }
+        if args.result_json:
+            atomic_write_json(args.result_json, status)
+        recipient_note = f"; recipients={config_summary['recipients']}" if "recipients" in config_summary else ""
+        print(f"Configuration valid: provider={provider}{recipient_note}. No credentials printed.")
         return 0
+
+    title = args.title or ("WxPusher 配置测试" if args.test_message else "今日科研文献雷达")
+    report = (
+        "# WxPusher 配置测试\n\n"
+        "如果你看到这条消息，说明应用 Token、UID 和消息接口均已连通。\n\n"
+        f"测试时间（UTC）：{utc_now_iso()}"
+        if args.test_message
+        else Path(args.report).read_text(encoding="utf-8")
+    )
     if args.dry_run:
         limit = {"wxpusher": 18000, "serverchan": 30000, "wecom": 3500}[provider]
         status = {
@@ -195,7 +268,7 @@ def main(argv: list[str] | None = None) -> int:
             "chunks": len(chunk_utf8(report, limit)),
         }
     else:
-        responses = SENDERS[provider](args.title, report)
+        responses = SENDERS[provider](title, report)
         status = {
             "generated_at": utc_now_iso(),
             "configured": True,

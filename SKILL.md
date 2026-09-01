@@ -105,6 +105,8 @@ Provider order is WxPusher, ServerChan, then WeCom. Credentials must remain in e
 - ServerChan: `SERVERCHAN_SENDKEY`.
 - WeCom: `WECOM_WEBHOOK_URL` or `WECHAT_WORK_WEBHOOK_URL`.
 
+When configuring, testing, or troubleshooting WxPusher, read [references/wxpusher_setup.md](references/wxpusher_setup.md). Validate settings locally with `python scripts/push_wechat.py --provider wxpusher --check-config`. Send a real connectivity test only when explicitly authorized, using `--test-message`.
+
 If no provider is configured, still generate the report and state exactly: “微信推送尚未配置。” If one source fails, continue and disclose it. If every source fails, stop. If no paper survives review, generate a zero-result report instead of lowering the threshold. Do not retry indefinitely.
 
 Recurring schedules are intentionally not bundled. Create or change a schedule only when the user explicitly asks, and include explicit delivery authorization in the scheduled prompt.
