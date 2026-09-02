@@ -51,7 +51,9 @@ python -m pip install -r requirements.txt
 
 ## 配置 WxPusher 微信推送
 
-完整的应用创建、微信绑定、UID获取、环境变量设置、测试和故障排查步骤见 [`references/wxpusher_setup.md`](references/wxpusher_setup.md)。Windows 新手推荐使用其中的“从剪贴板自动读取”方法，避免手动粘贴时漏字符或复制进多余网页内容；检查过程不会回显真实 Token 和 UID。
+完整的应用创建、微信 ClawBot 绑定与激活、UID获取、环境变量设置、双端测试和故障排查步骤见 [`references/wxpusher_setup.md`](references/wxpusher_setup.md)。Windows 新手推荐使用其中的“从剪贴板自动读取”方法，避免手动粘贴时漏字符或复制进多余网页内容；检查过程不会回显真实 Token 和 UID。
+
+ClawBot 是 WxPusher 的额外接收渠道：绑定后项目仍使用原来的 `appToken + UID`，不需要配置新的 ClawBot Token。按照 WxPusher 当前规则，ClawBot 每次激活可在 24 小时内接收最多 10 次推送，过期或用完后需在微信会话中回复任意内容重新激活；详细限制请以 [WxPusher 官方文档](https://wxpusher.zjiecode.com/docs/)为准。
 
 配置后先进行本地检查：
 

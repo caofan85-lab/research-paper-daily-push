@@ -209,7 +209,11 @@ Skill 会依次完成：
 
 微信推送是可选功能。没有配置时，项目仍会正常生成本地报告，并提示“微信推送尚未配置。”
 
-完整操作见 [WxPusher 微信推送配置](wxpusher_setup.md)。指南为 Windows 新手提供了“从剪贴板自动读取”方法：先运行配置代码，等程序提示后再分别复制 appToken 和 UID，回到 PowerShell 直接按 Enter，不需要手动粘贴。程序会检查前缀、格式和长度，只在两项都正确时保存，而且不会回显真实凭据。
+完整操作见 [WxPusher 微信推送配置](wxpusher_setup.md)。其中单独说明了如何在 WxPusher 客户端通过“我的 → 推送渠道 → 绑定微信 ClawBot”完成微信渠道绑定、如何在微信会话中激活，以及如何分别检查 WxPusher 客户端和 ClawBot 是否都收到消息。
+
+ClawBot 绑定后不需要增加新的项目变量，项目仍然只使用 `appToken + UID`。根据 WxPusher 当前官方规则，每次激活后最多可在 24 小时内接收 10 次 ClawBot 推送，过期或用完后需要在 ClawBot 会话中回复任意内容重新激活。ClawBot 是额外渠道，建议保留 WxPusher 客户端作为接收兜底。
+
+指南还为 Windows 新手提供了“从剪贴板自动读取”方法：先运行配置代码，等程序提示后再分别复制 appToken 和 UID，回到 PowerShell 直接按 Enter，不需要手动粘贴。程序会检查前缀、格式和长度，只在两项都正确时保存，而且不会回显真实凭据。
 
 取得 `AT_` 开头的 appToken 和 `UID_` 开头的 UID 后，应把它们存入当前用户的环境变量，不能写进脚本或提交到 GitHub。
 
@@ -297,8 +301,10 @@ Copy-Item -LiteralPath $source -Destination $backup -Recurse
 - 检查 appToken 是否以 `AT_` 开头；
 - 检查 UID 是否以 `UID_` 开头；
 - 设置永久环境变量后重新启动 PowerShell 和 Codex；
-- 检查微信 ClawBot 是否已经激活；
-- 在 WxPusher 用户管理中确认 UID 对应正确用户。
+- 如果 WxPusher 客户端和 ClawBot 都没收到，检查 appToken、UID、网络和终端返回信息；
+- 如果客户端收到而 ClawBot 没收到，在“我的 → 推送渠道”检查绑定，并在微信 ClawBot 会话中回复任意内容重新激活；
+- 检查是否已经超过本次激活后的 24 小时或 10 次推送；
+- 在 WxPusher 用户管理中确认 UID 对应的就是绑定 ClawBot 的接收用户。
 
 ### 当天没有推荐论文
 
