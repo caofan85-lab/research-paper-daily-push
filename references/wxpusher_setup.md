@@ -21,6 +21,7 @@
 - WxPusher 客户端下载：<https://wxpusher.zjiecode.com/download/>
 - 标准推送 API：<https://wxpusher.zjiecode.com/docs/api-reference.html>
 - 完整文档：<https://wxpusher.zjiecode.com/docs/>
+- 微信 ClawBot 图文绑定教程：<https://mp.weixin.qq.com/s/lYVNMLRtTNNjKKD7NLZxiA>
 - 官方文档源码（含微信 ClawBot 说明）：<https://github.com/wxpusher/wxpusher-docs>
 
 ## 1. 创建应用并取得 appToken
@@ -43,6 +44,8 @@ UID 属于接收者身份，不是 `appToken`。不要填写昵称、微信号�
 ## 3. 在 WxPusher 客户端中绑定微信 ClawBot
 
 这一步是“把 WxPusher 消息转送到微信 ClawBot”的关键，不能只在网页管理后台完成。
+
+第一次配置时，建议同时打开 [WxPusher 官方微信 ClawBot 图文绑定教程](https://mp.weixin.qq.com/s/lYVNMLRtTNNjKKD7NLZxiA)，对照教程图片和下面的步骤操作。该链接也是 WxPusher 官方开发文档所引用的绑定说明。
 
 ### 第一步：准备同一个接收用户
 
