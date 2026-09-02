@@ -209,7 +209,9 @@ Skill 会依次完成：
 
 微信推送是可选功能。没有配置时，项目仍会正常生成本地报告，并提示“微信推送尚未配置。”
 
-完整操作见 [WxPusher 微信推送配置](wxpusher_setup.md)。取得 `AT_` 开头的 appToken 和 `UID_` 开头的 UID 后，应把它们存入环境变量，不能写进脚本或提交到 GitHub。
+完整操作见 [WxPusher 微信推送配置](wxpusher_setup.md)。指南为 Windows 新手提供了“从剪贴板自动读取”方法：先运行配置代码，等程序提示后再分别复制 appToken 和 UID，回到 PowerShell 直接按 Enter，不需要手动粘贴。程序会检查前缀、格式和长度，只在两项都正确时保存，而且不会回显真实凭据。
+
+取得 `AT_` 开头的 appToken 和 `UID_` 开头的 UID 后，应把它们存入当前用户的环境变量，不能写进脚本或提交到 GitHub。
 
 配置后进入项目目录：
 

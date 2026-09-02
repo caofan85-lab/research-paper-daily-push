@@ -51,7 +51,7 @@ python -m pip install -r requirements.txt
 
 ## 配置 WxPusher 微信推送
 
-完整的应用创建、微信绑定、UID获取、环境变量设置、测试和故障排查步骤见 [`references/wxpusher_setup.md`](references/wxpusher_setup.md)。
+完整的应用创建、微信绑定、UID获取、环境变量设置、测试和故障排查步骤见 [`references/wxpusher_setup.md`](references/wxpusher_setup.md)。Windows 新手推荐使用其中的“从剪贴板自动读取”方法，避免手动粘贴时漏字符或复制进多余网页内容；检查过程不会回显真实 Token 和 UID。
 
 配置后先进行本地检查：
 
