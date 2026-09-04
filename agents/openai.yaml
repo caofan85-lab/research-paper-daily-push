@@ -1,4 +1,4 @@
 interface:
   display_name: "每日科研文献雷达"
-  short_description: "每日检索、证据复核、评分、去重并生成中文论文报告与微信推送"
-  default_prompt: "使用 $research-paper-daily-push 按我的配置运行今日科研文献雷达。"
+  short_description: "从代表性论文建立研究画像，检索并复核高价值近期论文"
+  default_prompt: "使用 $research-paper-daily-push：若尚未配置，读取 user_papers 生成研究画像草案供我确认；若已配置，运行今日科研文献雷达。"

@@ -10,7 +10,9 @@ from common import clean_text, load_json, unique_strings
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 SKILL_DIR = SCRIPT_DIR.parent
-DEFAULT_PROFILE = SKILL_DIR / "config" / "research_profile.json"
+TEMPLATE_PROFILE = SKILL_DIR / "config" / "research_profile.json"
+LOCAL_PROFILE = SKILL_DIR / "config" / "research_profile.local.json"
+DEFAULT_PROFILE = LOCAL_PROFILE if LOCAL_PROFILE.exists() else TEMPLATE_PROFILE
 
 
 class ProfileError(ValueError):
@@ -29,7 +31,8 @@ def load_profile(path: str | Path = DEFAULT_PROFILE, *, require_configured: bool
         raise ProfileError(f"研究配置不存在或格式无效：{path}")
     if require_configured and not profile.get("configured"):
         raise ProfileError(
-            "尚未配置研究主题。请填写 config/research_profile.json，并将 configured 设为 true。"
+            "尚未配置研究主题。请从 user_papers 生成研究画像，或填写本地研究配置；"
+            "确认后再将 configured 设为 true。"
         )
 
     profile.setdefault("profile_name", "")

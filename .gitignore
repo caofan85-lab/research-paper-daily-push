@@ -5,3 +5,11 @@ data/runs/
 *.delivery.json
 reviewed_articles.json
 *.md.tmp
+user_papers/*
+!user_papers/README.md
+data/profile_build/
+config/*.local.json
+config/*.local.md
+config/*.draft.json
+config/*.draft.md
+config/*.backup-*

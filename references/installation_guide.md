@@ -10,6 +10,7 @@
 - `scripts/` 存放检索、评分、去重、生成报告和微信推送工具。
 - `references/` 存放研究配置说明和操作教程。
 - `data/` 保存本地推送历史和研究记忆。
+- `user_papers/` 接收用于建立研究画像的代表性论文，论文内容默认不会提交到 Git。
 
 正常使用时，用户主要负责告诉 Codex“我要找什么”；Codex 负责调用工具并完成证据复核。单独运行检索脚本只能生成候选队列，不能替代 Codex 对论文证据的判断。
 
@@ -125,16 +126,45 @@ Set-Location "$env:USERPROFILE\.codex\skills\research-paper-daily-push"
 检查命令行工具：
 
 ```powershell
+python -m pip install -r requirements.txt
 python scripts\run_daily.py --help
 ```
 
-如果能看到中文帮助信息，说明 Python 和项目脚本能够正常启动。
+第一条命令安装 PDF 文本提取依赖；如果能看到中文帮助信息，说明 Python 和项目脚本能够正常启动。
 
 ## 五、配置自己的研究方向
 
 公开版本没有预设研究主题。这样可以保护开发者隐私，也能避免其他用户收到不相关论文。
 
-最简单的方法是在 Codex 中发送：
+### 方法一：放入代表性论文，自动生成研究画像
+
+1. 把3–10篇最能代表本人研究方向的 PDF、DOCX、TXT 或 Markdown 论文放入：
+
+```text
+C:\Users\你的用户名\.codex\skills\research-paper-daily-push\user_papers
+```
+
+2. 在 Codex 中发送：
+
+```text
+请使用 $research-paper-daily-push 读取 user_papers 中的代表性论文，生成研究画像草案。
+```
+
+3. Codex 会在本地提取论文文本，生成研究对象、核心科学问题、方法、关键词、检索式和证据映射。扫描版 PDF 如果没有可提取文字，会提示需要 OCR。
+
+4. 阅读 Codex 展示的画像摘要，修正不准确的方向。只有明确回复确认后，Skill 才会激活：
+
+```text
+config/research_profile.local.json
+config/research_topics.local.md
+config/profile_evidence.local.json
+```
+
+这些本地文件以及论文原文、提取文本默认被 Git 忽略。论文可能是背景或方法参考，因此“论文中出现”不等于“用户的核心方向”。确认步骤不能跳过。
+
+### 方法二：通过自然语言手动配置
+
+没有代表性论文时，在 Codex 中发送：
 
 ```text
 请使用 $research-paper-daily-push 帮我配置研究方向。
@@ -155,20 +185,20 @@ python scripts\run_daily.py --help
 排除只有产量比较、缺少机制分析的研究。
 ```
 
-Codex 会帮助填写：
+Codex 会帮助生成：
 
 ```text
-references/research_topics.md
-config/research_profile.json
+config/research_topics.local.md
+config/research_profile.local.json
 ```
 
-配置完成后，`config/research_profile.json` 中应包含：
+确认配置后，`config/research_profile.local.json` 中应包含：
 
 ```json
 "configured": true
 ```
 
-研究配置、未公开研究计划和推送凭据可能涉及隐私。不要把个人版本直接提交到公开 GitHub 仓库。
+研究论文、画像配置、未公开研究计划和推送凭据可能涉及隐私。不要使用 `git add -f` 强制提交这些本地文件。
 
 ## 六、第一次运行
 
@@ -260,11 +290,13 @@ Set-Location "$env:USERPROFILE\.codex\skills\research-paper-daily-push"
 git pull
 ```
 
-但更新前应先备份个人配置和历史数据，尤其是：
+更新前仍建议备份个人配置和历史数据，尤其是：
 
 ```text
-references/research_topics.md
-config/research_profile.json
+user_papers
+config/research_topics.local.md
+config/research_profile.local.json
+config/profile_evidence.local.json
 data/pushed_articles.json
 data/research_memory.json
 ```
@@ -290,7 +322,7 @@ Copy-Item -LiteralPath $source -Destination $backup -Recurse
 
 ### 显示“尚未配置研究主题”
 
-这不是程序故障。请先让 Codex 填写研究主题和 `research_profile.json`，并把 `configured` 设为 `true`。
+这不是程序故障。可以把代表性论文放入 `user_papers/` 并让 Codex 自动生成画像草案，也可以让 Codex 根据自然语言说明生成本地配置。只有用户确认后，`configured` 才能设为 `true`。
 
 ### PowerShell 提示找不到 python
 
@@ -314,7 +346,7 @@ Copy-Item -LiteralPath $source -Destination $backup -Recurse
 
 1. 下载并复制到 Codex Skills 目录；
 2. 重启 Codex；
-3. 让 Codex 配置研究方向；
+3. 把3–10篇代表性论文放入 `user_papers/`，让 Codex 生成画像并确认；无论文时改用自然语言配置；
 4. 输入“运行我的每日科研文献雷达”；
 5. 可选配置 WxPusher；
 6. 需要时再创建每日定时任务。

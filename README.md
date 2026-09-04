@@ -2,7 +2,7 @@
 
 [![Python unittest](https://github.com/caofan85-lab/research-paper-daily-push/actions/workflows/unittest.yml/badge.svg)](https://github.com/caofan85-lab/research-paper-daily-push/actions/workflows/unittest.yml)
 
-这是一个开源的 Codex Skill，用于每天或每周检索近期科研论文，并经过初筛、证据复核、评分、去重和中文总结后，只推荐真正值得阅读的少量论文。它支持为每个专业术语同时生成严谨解释和大白话解释，也可以通过 WxPusher、Server酱或企业微信机器人推送报告，并在本地维护推送历史与研究记忆。
+这是一个开源的 Codex Skill。用户可以把3–10篇代表性论文放入本地目录，由 Skill 提取论文内容、生成带证据映射的研究画像草案，并在用户确认后据此检索近期论文。候选论文经过初筛、证据复核、评分、去重和中文总结后，只推荐真正值得阅读的少量论文。项目也支持专业术语双重解释、微信推送、本地推送历史和研究记忆。
 
 公开模板**不包含任何预设研究主题、访问凭据、推送历史或学习记录**。在完成研究配置前，程序会停止检索，避免返回无关论文。
 
@@ -11,6 +11,8 @@
 ## 主要功能
 
 - 优先检索近24小时论文；高分候选不足时自动扩展到最近7天。
+- 从 PDF、DOCX、TXT 或 Markdown 代表性论文中生成可追溯的研究画像草案。
+- 激活画像前必须由用户确认；已有正式画像不会因新增论文而静默改变。
 - 使用 Europe PMC、Crossref、Semantic Scholar、OpenAlex 和 bioRxiv 等稳定学术接口。
 - 按研究相关性、创新性、论文质量、方法学价值和研究启发进行透明初筛。
 - 要求 Codex 阅读可用证据后重新评分，避免仅凭关键词或题名推荐。
@@ -22,7 +24,7 @@
 ## 运行环境
 
 - Python 3.10 或更高版本。
-- 核心脚本只使用 Python 标准库，无需额外安装依赖。
+- PDF 文本提取使用 `pypdf`；DOCX、TXT 和 Markdown 提取及其余核心流程使用 Python 标准库。
 - 联网检索和消息推送需要运行环境能够访问相应学术接口与通知服务。
 - [OpenAlex API](https://help.openalex.org/api/) 支持匿名基础检索；需要更高调用额度时，可申请 API Key 并存入 `OPENALEX_API_KEY` 环境变量，也可用 `OPENALEX_MAILTO` 提供联系邮箱。OpenAlex 检索使用游标翻页，每条查询最多读取600条近期记录。
 
@@ -42,12 +44,20 @@ python -m pip install -r requirements.txt
 
 ## 配置研究方向
 
-1. 在 [`references/research_topics.md`](references/research_topics.md) 中用自然语言填写研究对象、核心科学问题、优先级、偏好方法和排除规则。
-2. 按照 [`references/profile_schema.md`](references/profile_schema.md) 填写 `config/research_profile.json`，使检索和初筛规则可以被程序读取。
-3. 检查两个文件表达的研究方向是否一致。
-4. 配置完成后，将 `config/research_profile.json` 中的 `configured` 改为 `true`。
+### 推荐方式：从代表性论文自动建立画像
 
-公开模板默认留空。请不要在准备公开的分支中提交个人研究主题、未公开研究计划或真实推送凭据。
+1. 将3–10篇最能代表本人研究方向的论文放入 `user_papers/`。支持 PDF、DOCX、TXT 和 Markdown，也可以使用子文件夹。
+2. 在 Codex 中发送：“使用 `$research-paper-daily-push` 读取 `user_papers` 中的论文，生成研究画像草案。”
+3. Skill 会在本地提取论文文字，综合识别研究对象、核心问题、实验方法、组学类型、关键实体和检索词，并为核心判断记录来源文件与原文片段。
+4. 检查 Skill 展示的高置信度方向、低置信度判断和待确认问题。明确确认后，Skill 才会把画像写入 `config/research_profile.local.json` 并启用检索。
+
+完整的数据结构、校验和确认流程见 [`references/profile_from_papers.md`](references/profile_from_papers.md)。扫描版 PDF 如果无法提取文字，需要先进行 OCR 或换用可检索版本。
+
+### 备用方式：手动描述研究方向
+
+没有代表性论文时，可以直接向 Codex 说明研究对象、核心科学问题、优先方法和排除规则。Codex 按照 [`references/profile_schema.md`](references/profile_schema.md) 生成 `config/research_profile.local.json` 和 `config/research_topics.local.md`，展示给用户确认后再将 `configured` 改为 `true`。
+
+公开模板默认留空。`user_papers/` 中的论文、提取文本、草案和 `.local` 配置默认被 Git 忽略。请勿强制提交版权论文、个人研究主题、未公开研究计划或真实推送凭据。
 
 ## 配置 WxPusher 微信推送
 
@@ -108,6 +118,8 @@ python scripts/run_daily.py deliver --reviewed reviewed_articles.json --report d
 ## 数据与隐私
 
 - `data/pushed_articles.json` 和 `data/research_memory.json` 在公开模板中为空。
+- `user_papers/` 中的论文、`data/profile_build/` 中的提取文本和 `config/*.local.*` 不会被提交。
+- 论文画像解析默认在本地完成；论文内容不得未经授权上传到外部服务。
 - Token、UID、SendKey 和 Webhook 只从环境变量读取。
 - 推送状态 JSON 不保存真实凭据。
 - `.env`、运行中间文件和交付状态文件不会被提交。
